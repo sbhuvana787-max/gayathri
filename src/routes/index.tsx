@@ -39,6 +39,7 @@ import {
   Key,
   CheckCircle2,
   ArrowUpRight,
+  ChevronDown,
   Zap,
   UserCog,
   Puzzle,
@@ -66,7 +67,7 @@ export const Route = createFileRoute("/")({
 
 function Logo({ className = "" }: { className?: string }) {
   return (
-    <a href="#" className={"flex items-center gap-2.5 " + className}>
+    <a href="#home" className={"flex items-center gap-2.5 " + className}>
       <span className="relative grid h-8 w-8 place-items-center rounded-xl bg-[image:var(--gradient-brand)] shadow-[var(--shadow-elegant)]">
         <span className="absolute inset-0.5 rounded-[10px] bg-black/15" />
         <span className="relative text-sm font-black text-white tracking-tight">N</span>
@@ -147,14 +148,28 @@ function Nav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const links = [
+  const primaryLinks = [
     { label: "Features", href: "#features" },
-    { label: "Solutions", href: "#features" },
+    { label: "Solutions", href: "#solutions" },
+    { label: "About", href: "#about" },
     { label: "Pricing", href: "#pricing" },
-    { label: "AI", href: "#ai" },
-    { label: "Resources", href: "#faq" },
-    { label: "About", href: "#why" },
-    { label: "Contact", href: "#contact" },
+  ];
+  const platformLinks = [
+    { label: "Nexora AI", href: "#ai" },
+    { label: "AI Agents", href: "#agents" },
+    { label: "Workflow tour", href: "#workflow" },
+    { label: "Business dashboard", href: "#dashboard" },
+    { label: "Integrations", href: "#integrations" },
+    { label: "Security", href: "#security" },
+  ];
+  const moreLinks = [
+    { label: "Business metrics", href: "#proof" },
+    { label: "Customer community", href: "#customer-proof" },
+    { label: "Customer stories", href: "#stories" },
+    { label: "Product roadmap", href: "#roadmap" },
+    { label: "FAQs & resources", href: "#faq" },
+    { label: "Contact & demo", href: "#contact" },
+    { label: "Get started", href: "#get-started" },
   ];
 
   return (
@@ -168,8 +183,8 @@ function Nav() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Logo />
 
-        <nav className="hidden items-center gap-7 lg:flex">
-          {links.map((l) => (
+        <nav aria-label="Main navigation" className="hidden items-center gap-4 lg:flex xl:gap-5">
+          {primaryLinks.map((l) => (
             <a
               key={l.label}
               href={l.href}
@@ -177,6 +192,19 @@ function Nav() {
             >
               {l.label}
             </a>
+          ))}
+          {[
+            { label: "Platform", items: platformLinks },
+            { label: "Explore", items: moreLinks },
+          ].map((menu) => (
+            <details key={menu.label} className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+                {menu.label}<ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="absolute left-0 top-full z-50 mt-3 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                {menu.items.map((item) => <a key={item.href} href={item.href} className="block rounded-xl px-3 py-2.5 text-sm text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700">{item.label}</a>)}
+              </div>
+            </details>
           ))}
         </nav>
 
@@ -203,8 +231,8 @@ function Nav() {
 
       {open && (
         <div className="border-t border-border bg-white/95 backdrop-blur-xl lg:hidden">
-          <div className="mx-auto flex max-w-7xl flex-col gap-1 px-6 py-4">
-            {links.map((l) => (
+          <div className="mx-auto flex max-h-[calc(100vh-4.5rem)] max-w-7xl flex-col gap-1 overflow-y-auto px-6 py-4">
+            {[...primaryLinks, ...platformLinks, ...moreLinks].map((l) => (
               <a
                 key={l.label}
                 href={l.href}
@@ -238,7 +266,7 @@ function Nav() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden bg-hero-glow pt-32 pb-20 lg:pt-44 lg:pb-28">
+    <section id="home" className="landing-hero relative overflow-hidden bg-hero-glow pt-32 pb-20 lg:pt-44 lg:pb-28">
       {/* Subtle grid */}
       <div className="absolute inset-0 -z-10 [background-image:linear-gradient(oklch(0.14_0.02_260/0.035)_1px,transparent_1px),linear-gradient(90deg,oklch(0.14_0.02_260/0.035)_1px,transparent_1px)] [background-size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
 
@@ -455,7 +483,7 @@ function StatsBanner() {
     { value: "99.9%", label: "Platform uptime SLA" },
   ];
   return (
-    <section className="border-y border-border/60 bg-background">
+    <section id="proof" className="landing-proof border-y border-border/60 bg-background">
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {stats.map((s) => (
@@ -483,7 +511,7 @@ function TrustedBy() {
     "BluePath Tech", "Zenith Foods", "Orbit Logistics", "Crestline Co.",
   ];
   return (
-    <section className="py-14 overflow-hidden">
+    <section id="customer-proof" className="landing-trust py-14 overflow-hidden">
       <div className="mx-auto max-w-7xl px-6">
         <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Trusted by 12,000+ growing Indian businesses
@@ -1631,6 +1659,64 @@ function Features() {
   );
 }
 
+function Solutions() {
+  const solutions = [
+    {
+      segment: "RETAIL & STORES",
+      title: "Serve every customer, keep every shelf ready.",
+      description: "Bring billing, inventory, and customer context into one daily workflow—at the counter and beyond.",
+      icon: ShoppingCart,
+      points: ["Faster checkout and GST billing", "Stock alerts and purchase planning", "Customer history at a glance"],
+      accent: "from-blue-500 to-cyan-400",
+      iconTone: "bg-blue-50 text-blue-600",
+    },
+    {
+      segment: "DISTRIBUTION & WHOLESALE",
+      title: "Coordinate orders, stock, and collections.",
+      description: "Keep product availability, business buyers, invoices, and outstanding balances connected.",
+      icon: Warehouse,
+      points: ["Manage products and suppliers", "Track invoices and payments", "Review sales and stock trends"],
+      accent: "from-violet-500 to-indigo-400",
+      iconTone: "bg-violet-50 text-violet-600",
+    },
+    {
+      segment: "GROWING MULTI-LOCATION TEAMS",
+      title: "See the whole business from one place.",
+      description: "Give teams a shared operating picture with business records, reporting, and access in one platform.",
+      icon: GitBranch,
+      points: ["Bring branch activity together", "Follow role-based access", "Compare business performance"],
+      accent: "from-emerald-500 to-teal-400",
+      iconTone: "bg-emerald-50 text-emerald-600",
+    },
+  ];
+
+  return (
+    <section id="solutions" className="relative overflow-hidden bg-[color:var(--brand-deep)] py-20 text-white sm:py-24 lg:py-28">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(700px_420px_at_0%_0%,oklch(0.62_0.22_258/0.24),transparent_65%),radial-gradient(700px_420px_at_100%_100%,oklch(0.72_0.19_250/0.17),transparent_65%)]" />
+      <div className="relative mx-auto max-w-7xl px-6">
+        <div className="mb-12 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl"><p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--brand-glow)]"><span className="h-px w-5 bg-[color:var(--brand-glow)]/60" />Built around your business</p><h2 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">One platform. <span className="text-[color:var(--brand-glow)]">Your way of working.</span></h2><p className="mt-4 max-w-xl text-base leading-relaxed text-white/60">Solutions for the teams that keep commerce moving—from the first invoice to the next location.</p></div>
+          <a href="/signup" className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/10">Find your fit <ArrowRight className="h-4 w-4" /></a>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          {solutions.map((solution) => (
+            <article key={solution.segment} className="group relative flex min-h-[330px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.055] p-6 backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.08] sm:p-7">
+              <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${solution.accent}`} />
+              <span className={`grid h-12 w-12 place-items-center rounded-2xl ${solution.iconTone}`}><solution.icon className="h-5 w-5" /></span>
+              <p className="mt-6 text-[10px] font-bold tracking-[0.17em] text-white/40">{solution.segment}</p>
+              <h3 className="mt-2 text-xl font-bold leading-snug tracking-tight text-white">{solution.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-white/55">{solution.description}</p>
+              <ul className="mt-5 space-y-2.5 border-t border-white/10 pt-4">{solution.points.map((point) => <li key={point} className="flex items-center gap-2.5 text-xs text-white/75"><Check className="h-3.5 w-3.5 shrink-0 text-[color:var(--brand-glow)]" />{point}</li>)}</ul>
+              <a href="/signup" className="mt-auto inline-flex items-center gap-1.5 pt-6 text-xs font-semibold text-[color:var(--brand-glow)] transition-all hover:gap-2.5">Explore Nexora <ArrowUpRight className="h-3.5 w-3.5" /></a>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────────────
    AI SHOWCASE
 ───────────────────────────────────────────────────────────────── */
@@ -1748,12 +1834,148 @@ function AIShowcase() {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   AI AGENTS
+───────────────────────────────────────────────────────────────── */
+
+function AIAgents() {
+  const agents = [
+    { name: "AI Sales Agent", category: "REVENUE", description: "Surface sales opportunities, prepare lead follow-ups, and make sense of customer inquiries.", icon: TrendingUp, tint: "bg-blue-50 text-blue-600" },
+    { name: "AI Billing Agent", category: "BILLING", description: "Create invoice drafts, track payment status, and bring overdue balances into focus.", icon: Receipt, tint: "bg-violet-50 text-violet-600" },
+    { name: "AI Inventory Agent", category: "OPERATIONS", description: "Review stock levels, spot products running low, and plan upcoming inventory needs.", icon: Boxes, tint: "bg-amber-50 text-amber-600" },
+    { name: "AI Finance Agent", category: "FINANCE", description: "Summarize revenue, expenses, outstanding payments, and the trends behind them.", icon: Wallet, tint: "bg-emerald-50 text-emerald-600" },
+    { name: "AI CRM Agent", category: "CUSTOMERS", description: "Bring customer history into view and identify timely opportunities to follow up.", icon: Users, tint: "bg-sky-50 text-sky-600" },
+    { name: "AI Analytics Agent", category: "INSIGHTS", description: "Turn business performance into clear summaries, useful trends, and quick answers.", icon: LineChart, tint: "bg-indigo-50 text-indigo-600" },
+    { name: "AI Support Agent", category: "CUSTOMER CARE", description: "Help respond to common customer questions and keep support requests organized.", icon: MessageCircle, tint: "bg-rose-50 text-rose-600" },
+    { name: "AI Business Assistant", category: "YOUR COPILOT", description: "Ask questions across business operations through one unified conversational assistant.", icon: Sparkles, tint: "bg-cyan-50 text-cyan-700" },
+  ];
+
+  return (
+    <section id="agents" className="relative overflow-hidden bg-secondary/35 py-20 sm:py-24 lg:py-28">
+      <div className="pointer-events-none absolute -right-40 top-0 h-96 w-96 rounded-full bg-blue-100/60 blur-3xl" />
+      <div className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-full bg-violet-100/50 blur-3xl" />
+      <div className="relative mx-auto max-w-7xl px-6">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <SectionLabel>Specialized intelligence</SectionLabel>
+          <h2 className="mt-4 text-3xl font-black tracking-tight text-foreground sm:text-4xl lg:text-5xl">Meet Your <span className="text-gradient">AI Workforce</span></h2>
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-muted-foreground lg:text-lg">Intelligent AI agents that automate tasks, connect your business, and help you grow.</p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {agents.map((agent, index) => (
+            <article key={agent.name} style={{ animationDelay: `${index * 50}ms` }} className="group animate-rise flex min-h-[246px] flex-col rounded-2xl border border-border/80 bg-card/95 p-5 shadow-[var(--shadow-card)] transition duration-300 hover:-translate-y-1 hover:border-[color:var(--brand-electric)]/35 hover:shadow-[var(--shadow-elegant)] sm:p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className={`grid h-12 w-12 place-items-center rounded-2xl ring-1 ring-black/[0.03] ${agent.tint}`}><agent.icon className="h-5 w-5" /></div>
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-[9px] font-bold tracking-[0.13em] text-muted-foreground">{agent.category}</span>
+              </div>
+              <h3 className="mt-5 text-base font-bold tracking-tight text-foreground">{agent.name}</h3>
+              <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">{agent.description}</p>
+              <a href="/signup" className="mt-5 inline-flex w-fit items-center gap-2 border-t border-border pt-4 text-xs font-semibold text-[color:var(--brand-electric)] transition-colors hover:text-[color:var(--brand-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-electric)]">
+                Explore agent <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              </a>
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-8 flex flex-col items-start justify-between gap-4 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/90 via-white to-blue-50/80 p-5 sm:flex-row sm:items-center sm:px-6">
+          <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-indigo-600 shadow-sm"><Bot className="h-5 w-5" /></span><div><p className="text-sm font-semibold text-foreground">One connected team for every part of your business</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Explore Nexora and see how intelligent workflows can fit the way your business works.</p></div></div>
+          <Btn href="/signup" size="sm" className="shrink-0 rounded-xl">Explore Nexora <ArrowRight className="h-3.5 w-3.5" /></Btn>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WorkflowTour() {
+  const workflows = [
+    {
+      label: "Collect a payment",
+      eyebrow: "BILLING WORKFLOW",
+      title: "Keep cash flow moving.",
+      description: "See what needs attention and prepare a timely customer follow-up from one clear view.",
+      icon: Receipt,
+      signal: "Invoice approaching due date",
+      insight: "Cascade Foods · INV-2084 · ₹18,900",
+      action: "Prepare a payment reminder",
+      result: "Review the draft, then send when you’re ready",
+      color: "text-violet-600 bg-violet-50",
+    },
+    {
+      label: "Replenish stock",
+      eyebrow: "INVENTORY WORKFLOW",
+      title: "Stay ahead of low stock.",
+      description: "Spot products nearing their reorder point and turn a stock signal into a practical next step.",
+      icon: Boxes,
+      signal: "Product below reorder point",
+      insight: "Tata Salt 1kg · 4 units on hand",
+      action: "Review a purchase order draft",
+      result: "Confirm quantities before placing an order",
+      color: "text-amber-600 bg-amber-50",
+    },
+    {
+      label: "Understand performance",
+      eyebrow: "BUSINESS INSIGHT",
+      title: "Make the numbers clearer.",
+      description: "Bring key business signals together so you can understand what changed and decide what to do next.",
+      icon: BarChart3,
+      signal: "Monthly revenue trend",
+      insight: "Revenue is up 12% compared with last month",
+      action: "Explore the change by category",
+      result: "Move from a summary to the underlying report",
+      color: "text-blue-600 bg-blue-50",
+    },
+  ];
+  const [activeIndex, setActiveIndex] = useState(0);
+  const active = workflows[activeIndex];
+  const ActiveIcon = active.icon;
+
+  return (
+    <section id="workflow" className="relative overflow-hidden py-20 sm:py-24 lg:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
+          <div>
+            <SectionLabel>A clearer way to work</SectionLabel>
+            <h2 className="mt-4 text-3xl font-black tracking-tight text-foreground sm:text-4xl lg:text-[2.8rem] lg:leading-[1.08]">From business signal to your next best step.</h2>
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground">Explore a few sample Nexora workflows. Switch between them to see how billing, inventory, and business insights can come together.</p>
+            <div className="mt-8 space-y-2" role="tablist" aria-label="Sample business workflows">
+              {workflows.map((workflow, index) => {
+                const Icon = workflow.icon;
+                const isActive = index === activeIndex;
+                return <button key={workflow.label} id={`workflow-tab-${index}`} type="button" role="tab" aria-selected={isActive} aria-controls="workflow-panel" onClick={() => setActiveIndex(index)} className={`group flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition-all duration-200 ${isActive ? "border-indigo-200 bg-indigo-50/80 shadow-sm" : "border-transparent hover:border-border hover:bg-secondary/70"}`}>
+                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${workflow.color}`}><Icon className="h-4.5 w-4.5" /></span>
+                  <span className="min-w-0 flex-1"><span className={`block text-sm font-semibold ${isActive ? "text-indigo-950" : "text-foreground"}`}>{workflow.label}</span><span className="mt-0.5 block text-xs text-muted-foreground">{workflow.eyebrow.toLowerCase().replace(" workflow", "")}</span></span>
+                  <ArrowRight className={`h-4 w-4 transition-transform ${isActive ? "translate-x-0 text-indigo-600" : "-translate-x-1 text-muted-foreground opacity-0 group-hover:opacity-100"}`} />
+                </button>;
+              })}
+            </div>
+          </div>
+
+          <div id="workflow-panel" role="tabpanel" aria-labelledby={`workflow-tab-${activeIndex}`} className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_28px_80px_-42px_oklch(0.22_0.09_265/0.32)] sm:p-7">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400" />
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3"><span className={`grid h-10 w-10 place-items-center rounded-xl ${active.color}`}><ActiveIcon className="h-5 w-5" /></span><div><p className="text-sm font-semibold text-slate-900">Nexora workflow</p><p className="mt-0.5 text-[11px] text-slate-500">{active.eyebrow}</p></div></div>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-500">Sample walkthrough</span>
+            </div>
+            <div className="py-6"><h3 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[28px]">{active.title}</h3><p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">{active.description}</p></div>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4"><span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-slate-500 shadow-sm"><Bell className="h-4 w-4" /></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Business signal</p><p className="mt-1 text-sm font-semibold text-slate-800">{active.signal}</p><p className="mt-1 text-xs text-slate-500">{active.insight}</p></div></div>
+              <div className="ml-7 h-5 border-l border-dashed border-indigo-200" />
+              <div className="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4"><span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-indigo-600 shadow-sm"><Sparkles className="h-4 w-4" /></span><div><p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Nexora helps you</p><p className="mt-1 text-sm font-semibold text-indigo-950">{active.action}</p><p className="mt-1 text-xs text-indigo-700/70">{active.result}</p></div></div>
+            </div>
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4"><p className="text-[11px] text-slate-400">Illustrative sample data</p><a href="/signup" className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 transition hover:text-indigo-800">See Nexora in action <ArrowRight className="h-3.5 w-3.5" /></a></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
    DASHBOARD PREVIEW
 ───────────────────────────────────────────────────────────────── */
 
 function DashboardPreview() {
   return (
-    <section className="relative py-24 lg:py-32 bg-secondary/30">
+    <section id="dashboard" className="landing-dashboard relative py-24 lg:py-32 bg-secondary/30">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-2xl text-center mb-16">
           <SectionLabel>Command Centre</SectionLabel>
@@ -1922,7 +2144,7 @@ const INTEGRATIONS_SOON = [
 
 function Integrations() {
   return (
-    <section className="py-24 lg:py-32">
+    <section id="integrations" className="py-24 lg:py-32">
       <div className="mx-auto max-w-7xl px-6">
 
         {/* Header */}
@@ -2046,7 +2268,7 @@ function Security() {
     },
   ];
   return (
-    <section className="py-24 lg:py-32 bg-[color:var(--brand-deep)] text-white">
+    <section id="security" className="py-24 lg:py-32 bg-[color:var(--brand-deep)] text-white">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-2xl text-center mb-16">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--brand-glow)]">Enterprise Trust</p>
@@ -2088,6 +2310,34 @@ function Security() {
   );
 }
 
+function About() {
+  const principles = [
+    { icon: Layers, title: "One connected workspace", description: "Billing, inventory, customer relationships, and finance sit together in one business operating system." },
+    { icon: Brain, title: "Clarity for everyday decisions", description: "Useful summaries and intelligent assistance help make business information easier to understand." },
+    { icon: ShieldCheck, title: "Tools that respect your team", description: "Role-based access and clear business context help teams work with the information they need." },
+  ];
+
+  return (
+    <section id="about" className="relative overflow-hidden py-20 sm:py-24 lg:py-28">
+      <div className="pointer-events-none absolute -left-40 top-12 h-80 w-80 rounded-full bg-indigo-100/60 blur-3xl" />
+      <div className="relative mx-auto grid max-w-7xl gap-12 px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-20">
+        <div>
+          <SectionLabel>About Nexora</SectionLabel>
+          <h2 className="mt-4 text-3xl font-black leading-tight tracking-tight text-foreground sm:text-4xl lg:text-5xl">Built to make running a business feel more connected.</h2>
+          <p className="mt-5 text-base leading-7 text-muted-foreground">Nexora brings the details of running a business into one place, so teams can spend less time switching tools and more time moving work forward.</p>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">From the first customer conversation to the latest payment or stock update, Nexora is designed to give business owners a clearer view of what is happening and what needs attention.</p>
+          <a href="/signup" className="mt-7 inline-flex items-center gap-2 rounded-full bg-[image:var(--gradient-brand)] px-5 py-3 text-sm font-semibold text-white shadow-[var(--shadow-elegant)] transition hover:-translate-y-0.5">Discover Nexora <ArrowRight className="h-4 w-4" /></a>
+        </div>
+        <div className="relative rounded-[28px] border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-white to-blue-50/80 p-5 shadow-[0_24px_70px_-42px_oklch(0.32_0.16_262/0.32)] sm:p-7">
+          <div className="absolute right-7 top-7 h-20 w-20 rounded-full bg-blue-100/60 blur-2xl" />
+          <div className="relative mb-5 flex items-center gap-3 border-b border-indigo-100/80 pb-5"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[image:var(--gradient-brand)] shadow-md"><Sparkles className="h-5 w-5 text-white" /></span><div><p className="text-sm font-bold text-foreground">The Nexora approach</p><p className="mt-0.5 text-xs text-muted-foreground">Less fragmentation. More momentum.</p></div></div>
+          <div className="relative space-y-2">{principles.map((principle, index) => <div key={principle.title} className="flex gap-4 rounded-2xl p-3 transition hover:bg-white/80 sm:p-4"><span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-indigo-600 shadow-sm"><principle.icon className="h-4.5 w-4.5" /></span><div><div className="flex items-center gap-2"><span className="text-[10px] font-bold tracking-widest text-indigo-400">0{index + 1}</span><h3 className="text-sm font-semibold text-foreground">{principle.title}</h3></div><p className="mt-1.5 text-xs leading-5 text-muted-foreground">{principle.description}</p></div></div>)}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────────────
    TESTIMONIALS
 ───────────────────────────────────────────────────────────────── */
@@ -2118,7 +2368,7 @@ const TESTIMONIALS = [
 
 function Testimonials() {
   return (
-    <section className="bg-secondary/40 py-24 lg:py-32">
+    <section id="stories" className="landing-testimonials bg-secondary/40 py-24 lg:py-32">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-2xl text-center mb-16">
           <SectionLabel>Customer Stories</SectionLabel>
@@ -2403,7 +2653,7 @@ const STATUS_STYLE: Record<RoadmapStatus, { pill: string; bar: string; label: st
 
 function ComingSoon() {
   return (
-    <section id="roadmap" className="relative overflow-hidden py-24 lg:py-32">
+    <section id="roadmap" className="landing-roadmap relative overflow-hidden py-24 lg:py-32">
       {/* Subtle background */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_40%_at_50%_100%,oklch(0.62_0.22_258/0.04),transparent_70%)]" />
 
@@ -2679,7 +2929,7 @@ function Contact() {
 
 function FinalCTA() {
   return (
-    <section className="relative overflow-hidden py-24 lg:py-32">
+    <section id="get-started" className="landing-cta relative overflow-hidden py-24 lg:py-32">
       <div className="mx-auto max-w-6xl px-6">
         <div className="relative overflow-hidden rounded-[2.5rem] bg-[color:var(--brand-deep)] px-8 py-20 text-center text-white shadow-[var(--shadow-elegant)] sm:px-16 sm:py-24">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(800px_400px_at_50%_-10%,oklch(0.72_0.19_250/0.45),transparent_55%),radial-gradient(600px_300px_at_50%_120%,oklch(0.55_0.24_258/0.4),transparent_60%)]" />
@@ -2881,17 +3131,21 @@ function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground antialiased">
+    <div className="landing-page min-h-screen bg-background text-foreground antialiased">
       <Nav />
       <main>
         <Hero />
         <StatsBanner />
         <TrustedBy />
         <Features />
+        <Solutions />
         <AIShowcase />
+        <AIAgents />
+        <WorkflowTour />
         <DashboardPreview />
         <Integrations />
         <Security />
+        <About />
         <Testimonials />
         <Pricing />
         <ComingSoon />

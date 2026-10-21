@@ -11,18 +11,8 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import {
-  plData,
-  currentPL,
-  ytdRevenue,
-  ytdExpenses,
-  ytdNetProfit,
-  incomeCategories,
-  expenseCategories,
-  incomeEntries,
-  expenseEntries,
-  fmtINR,
-} from "@/lib/finance-data";
+import { incomeCategories, expenseCategories, fmtINR } from "@/lib/finance-data";
+import { useFinanceModel } from "@/hooks/useFinanceModel";
 import {
   SectionCard,
   StatTile,
@@ -62,8 +52,8 @@ function MarginBadge({ pct }: { pct: number }) {
     pct >= 20
       ? "bg-emerald-100 text-emerald-700"
       : pct >= 10
-      ? "bg-amber-100 text-amber-700"
-      : "bg-red-100 text-red-600";
+        ? "bg-amber-100 text-amber-700"
+        : "bg-red-100 text-red-600";
   return (
     <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>
       {pct.toFixed(1)}%
@@ -72,24 +62,54 @@ function MarginBadge({ pct }: { pct: number }) {
 }
 
 export function ProfitLossTab() {
+  const { model, isLoading, isError, error } = useFinanceModel();
+  const {
+    plData,
+    currentPL,
+    ytdRevenue,
+    ytdExpenses,
+    ytdNetProfit,
+    incomeEntries,
+    expenseEntries,
+  } = model;
+  if (isLoading)
+    return (
+      <p className="rounded-xl border bg-white p-6 text-sm text-muted-foreground">
+        Loading cash-basis profit and loss…
+      </p>
+    );
+  if (isError)
+    return (
+      <p
+        role="alert"
+        className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700"
+      >
+        Unable to load profit and loss: {(error as Error).message}
+      </p>
+    );
+  const currentMonth = new Date().toISOString().slice(0, 7);
   const ytdGrossProfit = ytdRevenue - ytdExpenses;
   const profitMargin = ytdRevenue > 0 ? (ytdNetProfit / ytdRevenue) * 100 : 0;
 
   // Aggregate current month income by category
-  const currentMonthIncome = incomeCategories.map((cat) => {
-    const total = incomeEntries
-      .filter((e) => e.date.startsWith("2025-07") && e.category === cat)
-      .reduce((s, e) => s + e.amount, 0);
-    return { category: cat, amount: total };
-  }).filter((c) => c.amount > 0);
+  const currentMonthIncome = incomeCategories
+    .map((cat) => {
+      const total = incomeEntries
+        .filter((e) => e.date.startsWith(currentMonth) && e.category === cat)
+        .reduce((s, e) => s + e.amount, 0);
+      return { category: cat, amount: total };
+    })
+    .filter((c) => c.amount > 0);
 
   // Aggregate current month expenses by category
-  const currentMonthExpenses = expenseCategories.map((cat) => {
-    const total = expenseEntries
-      .filter((e) => e.date.startsWith("2025-07") && e.category === cat)
-      .reduce((s, e) => s + e.amount, 0);
-    return { category: cat, amount: total };
-  }).filter((c) => c.amount > 0);
+  const currentMonthExpenses = expenseCategories
+    .map((cat) => {
+      const total = expenseEntries
+        .filter((e) => e.date.startsWith(currentMonth) && e.category === cat)
+        .reduce((s, e) => s + e.amount, 0);
+      return { category: cat, amount: total };
+    })
+    .filter((c) => c.amount > 0);
 
   const incomeSubtotal = currentMonthIncome.reduce((s, c) => s + c.amount, 0);
   const expenseSubtotal = currentMonthExpenses.reduce((s, c) => s + c.amount, 0);
@@ -106,38 +126,37 @@ export function ProfitLossTab() {
       {/* YTD Summary Cards */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Profit & Loss Statement</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Year-to-date performance — FY 2025–26</p>
+          <h2 className="text-base font-semibold text-foreground">Profit & Loss (Cash Basis)</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Cash receipts less recorded payments · current financial year
+          </p>
         </div>
-        <SecondaryButton
-          icon={Printer}
-          onClick={() => alert("Print / Export P&L — PDF export coming soon.")}
-        >
+        <SecondaryButton icon={Printer} onClick={() => window.print()}>
           Print
         </SecondaryButton>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile
-          label="Total Revenue"
+          label="Collected Receipts"
           value={fmtINR(ytdRevenue)}
-          sub="YTD all income"
+          sub="Current financial year"
           icon={TrendingUp}
           bg="bg-emerald-50"
           iconColor="text-emerald-600"
           index={0}
         />
         <StatTile
-          label="Total Expenses"
+          label="Recorded Payments"
           value={fmtINR(ytdExpenses)}
-          sub="YTD all costs"
+          sub="Current financial year"
           icon={TrendingDown}
           bg="bg-red-50"
           iconColor="text-red-500"
           index={1}
         />
         <StatTile
-          label="Gross Profit"
+          label="Net Cash Result"
           value={fmtINR(ytdGrossProfit)}
           sub={ytdGrossProfit >= 0 ? "Revenue minus expenses" : "Net loss"}
           icon={BarChart2}
@@ -161,7 +180,7 @@ export function ProfitLossTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Section */}
         <SectionCard
-          title={`Revenue — Jul 2025`}
+          title={`Receipts — ${new Date().toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`}
           subtitle={`${currentMonthIncome.length} income categories`}
         >
           <div className="space-y-2">
@@ -174,10 +193,14 @@ export function ProfitLossTab() {
                 className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="text-lg leading-none">{INCOME_ICONS[item.category] ?? "💵"}</span>
+                  <span className="text-lg leading-none">
+                    {INCOME_ICONS[item.category] ?? "💵"}
+                  </span>
                   <span className="text-sm text-foreground">{item.category}</span>
                 </div>
-                <span className="text-sm font-semibold text-emerald-600">{fmtINR(item.amount)}</span>
+                <span className="text-sm font-semibold text-emerald-600">
+                  {fmtINR(item.amount)}
+                </span>
               </motion.div>
             ))}
             <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-3 px-3">
@@ -189,7 +212,7 @@ export function ProfitLossTab() {
 
         {/* Expense Section */}
         <SectionCard
-          title={`Expenses — Jul 2025`}
+          title={`Payments — ${new Date().toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`}
           subtitle={`${currentMonthExpenses.length} expense categories`}
         >
           <div className="space-y-2">
@@ -202,7 +225,9 @@ export function ProfitLossTab() {
                 className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="text-lg leading-none">{EXPENSE_ICONS[item.category] ?? "📌"}</span>
+                  <span className="text-lg leading-none">
+                    {EXPENSE_ICONS[item.category] ?? "📌"}
+                  </span>
                   <span className="text-sm text-foreground">{item.category}</span>
                 </div>
                 <span className="text-sm font-semibold text-red-500">{fmtINR(item.amount)}</span>
@@ -284,11 +309,11 @@ export function ProfitLossTab() {
                 >
                   <Td>
                     <div className="flex items-center gap-2">
-                      {isCurrent && (
-                        <div className="h-4 w-1 rounded-full bg-indigo-500 shrink-0" />
-                      )}
-                      <span className={`text-sm font-medium ${isCurrent ? "text-indigo-700" : "text-foreground"}`}>
-                        {row.month} 2025
+                      {isCurrent && <div className="h-4 w-1 rounded-full bg-indigo-500 shrink-0" />}
+                      <span
+                        className={`text-sm font-medium ${isCurrent ? "text-indigo-700" : "text-foreground"}`}
+                      >
+                        {row.month}
                         {isCurrent && (
                           <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">
                             Current
@@ -304,12 +329,16 @@ export function ProfitLossTab() {
                     <span className="text-sm text-red-500">{fmtINR(row.expenses)}</span>
                   </Td>
                   <Td right>
-                    <span className={`text-sm font-medium ${row.grossProfit >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    <span
+                      className={`text-sm font-medium ${row.grossProfit >= 0 ? "text-emerald-600" : "text-red-500"}`}
+                    >
                       {fmtINR(row.grossProfit)}
                     </span>
                   </Td>
                   <Td right>
-                    <span className={`text-sm font-semibold ${row.netProfit >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                    <span
+                      className={`text-sm font-semibold ${row.netProfit >= 0 ? "text-emerald-600" : "text-red-500"}`}
+                    >
                       {fmtINR(row.netProfit)}
                     </span>
                   </Td>
@@ -332,12 +361,16 @@ export function ProfitLossTab() {
                 <span className="text-sm font-bold text-red-500">{fmtINR(grandExpenses)}</span>
               </Td>
               <Td right>
-                <span className={`text-sm font-bold ${grandGross >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                <span
+                  className={`text-sm font-bold ${grandGross >= 0 ? "text-emerald-600" : "text-red-500"}`}
+                >
                   {fmtINR(grandGross)}
                 </span>
               </Td>
               <Td right>
-                <span className={`text-sm font-bold ${grandNet >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                <span
+                  className={`text-sm font-bold ${grandNet >= 0 ? "text-emerald-600" : "text-red-500"}`}
+                >
                   {fmtINR(grandNet)}
                 </span>
               </Td>

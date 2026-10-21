@@ -47,7 +47,7 @@ export type DbPaymentUpdate = Partial<
 // ── Invoice balance helper ─────────────────────────────────────────
 
 async function getInvoiceBalance(
-  invoiceId: string
+  invoiceId: string,
 ): Promise<{ amountPaid: number; grandTotal: number }> {
   const { data, error } = await supabase
     .from("invoices")
@@ -56,12 +56,14 @@ async function getInvoiceBalance(
     .single();
   if (error) throw error;
 
-  const grandTotal = ((data.invoice_items as unknown as {
-    quantity: number;
-    unit_price: number;
-    discount_percent: number;
-    gst_percent: number;
-  }[]) ?? []).reduce((sum, item) => {
+  const grandTotal = (
+    (data.invoice_items as unknown as {
+      quantity: number;
+      unit_price: number;
+      discount_percent: number;
+      gst_percent: number;
+    }[]) ?? []
+  ).reduce((sum, item) => {
     const line = item.quantity * item.unit_price * (1 - item.discount_percent / 100);
     return sum + line * (1 + item.gst_percent / 100);
   }, 0);
@@ -143,11 +145,13 @@ export const paymentsService = {
   async getAll(businessId: string): Promise<PaymentTxn[]> {
     const { data, error } = await supabase
       .from("payments")
-      .select(`
+      .select(
+        `
         *,
-        invoices(invoice_number),
-        customers(name, city)
-      `)
+        invoices!payments_invoice_id_fkey(invoice_number),
+        customers!payments_customer_id_fkey(name, city)
+      `,
+      )
       .eq("business_id", businessId)
       .order("created_at", { ascending: false });
     if (error) throw error;
@@ -166,7 +170,7 @@ export const paymentsService = {
       notes?: string;
       currency?: string;
     },
-    businessId: string
+    businessId: string,
   ): Promise<PaymentTxn> {
     const paymentNumber = await generatePaymentNumber(businessId);
 
@@ -187,7 +191,9 @@ export const paymentsService = {
     const { data, error } = await supabase
       .from("payments")
       .insert(insert)
-      .select(`*, invoices(invoice_number), customers(name, city)`)
+      .select(
+        `*, invoices!payments_invoice_id_fkey(invoice_number), customers!payments_customer_id_fkey(name, city)`,
+      )
       .single();
     if (error) throw error;
 
@@ -214,19 +220,23 @@ export const paymentsService = {
       date?: string;
       transactionRef?: string;
       notes?: string;
-    }
+    },
   ): Promise<PaymentTxn> {
     const payload: DbPaymentUpdate = {
       ...(input.mode !== undefined ? { mode: input.mode } : {}),
       ...(input.date !== undefined ? { payment_date: input.date } : {}),
-      ...(input.transactionRef !== undefined ? { transaction_ref: input.transactionRef || null } : {}),
+      ...(input.transactionRef !== undefined
+        ? { transaction_ref: input.transactionRef || null }
+        : {}),
       ...(input.notes !== undefined ? { notes: input.notes || null } : {}),
     };
     const { data, error } = await supabase
       .from("payments")
       .update(payload)
       .eq("id", id)
-      .select(`*, invoices(invoice_number), customers(name, city)`)
+      .select(
+        `*, invoices!payments_invoice_id_fkey(invoice_number), customers!payments_customer_id_fkey(name, city)`,
+      )
       .single();
     if (error) throw error;
     return dbToPayment(data as DbPaymentJoined);
@@ -244,10 +254,7 @@ export const paymentsService = {
 
   /** Mark a received payment as refunded and reverse the invoice balance. */
   async refund(id: string, invoiceId: string, amount: number): Promise<void> {
-    const { error } = await supabase
-      .from("payments")
-      .update({ status: "refunded" })
-      .eq("id", id);
+    const { error } = await supabase.from("payments").update({ status: "refunded" }).eq("id", id);
     if (error) throw error;
     if (isUUID(invoiceId)) {
       await adjustInvoiceBalance(invoiceId, -amount);
@@ -256,10 +263,7 @@ export const paymentsService = {
 
   /** Mark a payment as voided and reverse the invoice balance. */
   async void(id: string, invoiceId: string, amount: number): Promise<void> {
-    const { error } = await supabase
-      .from("payments")
-      .update({ status: "voided" })
-      .eq("id", id);
+    const { error } = await supabase.from("payments").update({ status: "voided" }).eq("id", id);
     if (error) throw error;
     if (isUUID(invoiceId)) {
       await adjustInvoiceBalance(invoiceId, -amount);

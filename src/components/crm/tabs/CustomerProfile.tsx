@@ -36,6 +36,10 @@ import {
 } from "@/components/crm/shared";
 import { useCustomerById, useCustomerNotes, useAddCustomerNote } from "@/hooks/useCustomersQuery";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { useInvoices } from "@/hooks/useInvoicesQuery";
+import { usePayments } from "@/hooks/usePaymentsQuery";
+import { useCrmActivities } from "@/hooks/useCrmQuery";
+import { invoiceBalance, invoiceGrandTotal } from "@/lib/billing-data";
 
 // ── Field display helper ──────────────────────────────────────────
 
@@ -56,7 +60,9 @@ function ProfileSkeleton({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-        <SecondaryButton icon={ArrowLeft} onClick={onBack}>Back to Customers</SecondaryButton>
+        <SecondaryButton icon={ArrowLeft} onClick={onBack}>
+          Back to Customers
+        </SecondaryButton>
         <div className="flex items-center gap-2.5 ml-2">
           <div className="h-10 w-10 rounded-full bg-slate-100 animate-pulse" />
           <div className="space-y-1.5">
@@ -92,9 +98,13 @@ export function CustomerProfile({
   onBack: () => void;
 }) {
   const { business } = useBusiness();
+  const businessId = business?.id ?? null;
 
   const { data: customer, isLoading, error } = useCustomerById(customerId);
   const { data: dbNotes = [], isLoading: notesLoading } = useCustomerNotes(customerId);
+  const { data: allInvoices = [], isLoading: invoicesLoading } = useInvoices(businessId);
+  const { data: allPayments = [] } = usePayments(businessId);
+  const { data: allActivities = [] } = useCrmActivities(businessId);
   const addNoteMutation = useAddCustomerNote(customerId);
 
   const [tab, setTab] = useState<ProfileTab>("overview");
@@ -152,8 +162,22 @@ export function CustomerProfile({
     date: n.created_at.slice(0, 10),
   }));
 
-  const totalOutstanding = customer.opening_balance;
-  const creditRemaining = Math.max(0, customer.credit_limit - customer.opening_balance);
+  const customerInvoices = allInvoices.filter(
+    (invoice) =>
+      invoice.customerId === customerId &&
+      invoice.status !== "cancelled" &&
+      invoice.status !== "draft",
+  );
+  const customerPayments = allPayments.filter((payment) => payment.customerId === customerId);
+  const customerActivities = allActivities.filter((event) => event.customer_id === customerId);
+  const totalOutstanding =
+    Number(customer.opening_balance) +
+    customerInvoices.reduce((sum, invoice) => sum + Math.max(0, invoiceBalance(invoice)), 0);
+  const customerRevenue = customerInvoices.reduce(
+    (sum, invoice) => sum + invoiceGrandTotal(invoice),
+    0,
+  );
+  const creditRemaining = Math.max(0, customer.credit_limit - totalOutstanding);
 
   async function addNote() {
     const text = noteInput.trim();
@@ -180,7 +204,9 @@ export function CustomerProfile({
     >
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-        <SecondaryButton icon={ArrowLeft} onClick={onBack}>Back to Customers</SecondaryButton>
+        <SecondaryButton icon={ArrowLeft} onClick={onBack}>
+          Back to Customers
+        </SecondaryButton>
         <div className="flex items-center gap-2.5 ml-2">
           <Avatar name={customer.name} size="md" />
           <div>
@@ -228,16 +254,16 @@ export function CustomerProfile({
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 text-center">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="text-xs text-muted-foreground">Total Revenue</p>
-              <p className="mt-0.5 text-sm font-bold text-foreground">—</p>
+              <p className="mt-0.5 text-sm font-bold text-foreground">{fmtINR(customerRevenue)}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="text-xs text-muted-foreground">Outstanding</p>
               <p
                 className={`mt-0.5 text-sm font-bold ${
-                  customer.opening_balance > 0 ? "text-red-600" : "text-emerald-600"
+                  totalOutstanding > 0 ? "text-red-600" : "text-emerald-600"
                 }`}
               >
-                {customer.opening_balance > 0 ? fmtINR(customer.opening_balance) : "Nil"}
+                {totalOutstanding > 0 ? fmtINR(totalOutstanding) : "Nil"}
               </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
@@ -344,14 +370,49 @@ export function CustomerProfile({
       {tab === "purchases" && (
         <SectionCard
           title="Purchase History"
-          subtitle="Invoice history will appear here once the Billing module is connected"
+          subtitle="Invoices associated with this shared Billing customer record"
           action={<FileText className="h-4 w-4 text-muted-foreground" />}
         >
-          <EmptyState
-            icon={FileText}
-            title="No purchases yet"
-            subtitle="Purchase history from the Billing module will appear here."
-          />
+          {invoicesLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Loading invoices…</p>
+          ) : customerInvoices.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title="No purchases yet"
+              subtitle="Invoices for this customer will appear here."
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Invoice</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customerInvoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                      <TableCell>{fmtDate(invoice.createdDate)}</TableCell>
+                      <TableCell>
+                        <CrmStatusPill status={invoice.paymentStatus} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmtINR(invoiceGrandTotal(invoice))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmtINR(Math.max(0, invoiceBalance(invoice)))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </SectionCard>
       )}
 
@@ -360,10 +421,8 @@ export function CustomerProfile({
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-2xl border border-red-100 bg-red-50 p-5">
-              <p className="text-xs text-red-600 font-semibold">Opening Balance</p>
-              <p className="mt-1 text-2xl font-bold text-red-700">
-                {fmtINR(totalOutstanding)}
-              </p>
+              <p className="text-xs text-red-600 font-semibold">Total Outstanding</p>
+              <p className="mt-1 text-2xl font-bold text-red-700">{fmtINR(totalOutstanding)}</p>
             </div>
             <div className="rounded-2xl border border-amber-100 bg-amber-50 p-5">
               <p className="text-xs text-amber-600 font-semibold">Credit Limit</p>
@@ -373,17 +432,41 @@ export function CustomerProfile({
             </div>
             <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5">
               <p className="text-xs text-slate-600 font-semibold">Credit Remaining</p>
-              <p className="mt-1 text-2xl font-bold text-slate-700">
-                {fmtINR(creditRemaining)}
-              </p>
+              <p className="mt-1 text-2xl font-bold text-slate-700">{fmtINR(creditRemaining)}</p>
             </div>
           </div>
-          <SectionCard title="Pending / Overdue Payments" subtitle="Will populate once Billing is connected">
-            <EmptyState
-              icon={AlertCircle}
-              title="No outstanding payments"
-              subtitle="Invoice-level outstanding will appear here once the Billing module is connected."
-            />
+          <SectionCard
+            title="Pending / Overdue Invoices"
+            subtitle="Calculated from Billing invoice totals and payments"
+          >
+            {customerInvoices.filter((invoice) => invoiceBalance(invoice) > 0).length === 0 ? (
+              <EmptyState
+                icon={AlertCircle}
+                title="No outstanding payments"
+                subtitle="No invoice balances are currently due."
+              />
+            ) : (
+              <div className="space-y-3">
+                {customerInvoices
+                  .filter((invoice) => invoiceBalance(invoice) > 0)
+                  .map((invoice) => (
+                    <div
+                      key={invoice.id}
+                      className="flex items-center justify-between rounded-lg border border-slate-100 p-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{invoice.invoiceNumber}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Due {fmtDate(invoice.dueDate || invoice.createdDate)}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-amber-700">
+                        {fmtINR(invoiceBalance(invoice))}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            )}
           </SectionCard>
         </div>
       )}
@@ -452,6 +535,11 @@ export function CustomerProfile({
               ))}
             </div>
           )}
+          {addNoteMutation.error && (
+            <p role="alert" className="mt-3 text-sm text-red-700">
+              {(addNoteMutation.error as Error).message}
+            </p>
+          )}
         </SectionCard>
       )}
 
@@ -459,14 +547,50 @@ export function CustomerProfile({
       {tab === "activity" && (
         <SectionCard
           title="Activity Timeline"
-          subtitle="CRM events for this customer will appear here"
+          subtitle="CRM notes and Billing history for this customer"
           action={<Activity className="h-4 w-4 text-muted-foreground" />}
         >
-          <EmptyState
-            icon={Activity}
-            title="No activity recorded"
-            subtitle="CRM events (invoices, payments, notes) for this customer will appear here as the platform grows."
-          />
+          {customerActivities.length === 0 &&
+          customerPayments.length === 0 &&
+          customerInvoices.length === 0 ? (
+            <EmptyState
+              icon={Activity}
+              title="No activity recorded"
+              subtitle="Invoices, payments, and CRM updates will appear here."
+            />
+          ) : (
+            <div className="space-y-3">
+              {[
+                ...customerActivities.map((event) => ({
+                  id: event.id,
+                  title: event.title,
+                  detail: event.details,
+                  date: event.occurred_at,
+                })),
+                ...customerInvoices.map((invoice) => ({
+                  id: "inv-" + invoice.id,
+                  title: "Invoice " + invoice.invoiceNumber,
+                  detail: "Billing · " + invoice.paymentStatus,
+                  date: invoice.createdDate,
+                })),
+                ...customerPayments.map((payment) => ({
+                  id: "pay-" + payment.id,
+                  title: "Payment " + payment.paymentNumber,
+                  detail: payment.currency + " " + payment.amount.toLocaleString(),
+                  date: payment.date,
+                })),
+              ]
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((event) => (
+                  <div key={event.id} className="rounded-lg border border-slate-100 p-3">
+                    <p className="text-sm font-medium">{event.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {event.detail} · {fmtDate(event.date.slice(0, 10))}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          )}
         </SectionCard>
       )}
     </motion.div>

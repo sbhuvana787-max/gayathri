@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Receipt, Info, FileText, AlertCircle } from "lucide-react";
 import {
@@ -11,25 +10,51 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import {
-  gstSummary,
-  currentMonthGST,
-  fmtINR,
-} from "@/lib/finance-data";
-import {
-  SectionCard,
-  StatTile,
-  TableWrapper,
-  Th,
-  Td,
-} from "@/components/finance/shared";
+import { fmtINR } from "@/lib/finance-data";
+import { useFinanceModel } from "@/hooks/useFinanceModel";
+import { SectionCard, StatTile, TableWrapper, Th, Td } from "@/components/finance/shared";
 
 export function GSTSummaryTab() {
-  const [filedRows, setFiledRows] = useState<Set<string>>(new Set());
+  const { model, isLoading, isError, error } = useFinanceModel();
+  const { gstSummary, currentMonthGST } = model;
+  if (isLoading)
+    return (
+      <p className="rounded-xl border bg-white p-6 text-sm text-muted-foreground">
+        Loading GST summary…
+      </p>
+    );
+  if (isError)
+    return (
+      <p
+        role="alert"
+        className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700"
+      >
+        Unable to load GST summary: {(error as Error).message}
+      </p>
+    );
 
-  function handleFileGSTR(month: string) {
-    alert(`Filing GSTR for ${month}. This will be integrated with the GST portal.`);
-    setFiledRows((prev) => new Set([...prev, month]));
+  function exportMonth(month: (typeof gstSummary)[number]) {
+    const rows = [
+      ["Month", "CGST", "SGST", "IGST", "GST on invoices", "ITC recorded", "Net payable"],
+      [
+        month.month,
+        month.cgst,
+        month.sgst,
+        month.igst,
+        month.collectedGST,
+        month.itcClaimed,
+        month.payableGST,
+      ],
+    ];
+    const csv = rows
+      .map((row) => row.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(","))
+      .join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gst-summary-${month.month.toLowerCase().replaceAll(" ", "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -89,9 +114,7 @@ export function GSTSummaryTab() {
           <p className="mt-2 text-2xl font-bold text-foreground">
             {fmtINR(currentMonthGST.collectedGST)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Total GST billed to customers
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Total GST billed to customers</p>
         </motion.div>
 
         <motion.div
@@ -106,9 +129,7 @@ export function GSTSummaryTab() {
           <p className="mt-2 text-2xl font-bold text-emerald-600">
             {fmtINR(currentMonthGST.itcClaimed)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Input Tax Credit utilized
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Input Tax Credit utilized</p>
         </motion.div>
 
         <motion.div
@@ -117,9 +138,7 @@ export function GSTSummaryTab() {
           transition={{ duration: 0.3, delay: 0.2 }}
           className="rounded-2xl border border-amber-200 bg-amber-50 shadow-sm p-5"
         >
-          <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">
-            GST Payable
-          </p>
+          <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">GST Payable</p>
           <p className="mt-2 text-2xl font-bold text-amber-700">
             {fmtINR(currentMonthGST.payableGST)}
           </p>
@@ -130,10 +149,7 @@ export function GSTSummaryTab() {
       </div>
 
       {/* Monthly GST Chart */}
-      <SectionCard
-        title="Monthly GST Trend"
-        subtitle="CGST, SGST, and IGST breakdown by month"
-      >
+      <SectionCard title="Monthly GST Trend" subtitle="CGST, SGST, and IGST breakdown by month">
         <ResponsiveContainer width="100%" height={300}>
           <BarChart
             data={gstSummary}
@@ -188,7 +204,6 @@ export function GSTSummaryTab() {
           <tbody>
             {gstSummary.map((entry, idx) => {
               const isCurrent = entry.month === currentMonthGST.month;
-              const isFiled = filedRows.has(entry.month);
               return (
                 <motion.tr
                   key={entry.month}
@@ -199,10 +214,10 @@ export function GSTSummaryTab() {
                 >
                   <Td>
                     <div className="flex items-center gap-2">
-                      {isCurrent && (
-                        <div className="h-4 w-1 rounded-full bg-indigo-500 shrink-0" />
-                      )}
-                      <span className={`text-sm font-medium ${isCurrent ? "text-indigo-700" : "text-foreground"}`}>
+                      {isCurrent && <div className="h-4 w-1 rounded-full bg-indigo-500 shrink-0" />}
+                      <span
+                        className={`text-sm font-medium ${isCurrent ? "text-indigo-700" : "text-foreground"}`}
+                      >
                         {entry.month}
                         {isCurrent && (
                           <span className="ml-2 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">
@@ -222,26 +237,25 @@ export function GSTSummaryTab() {
                     <span className="text-sm text-foreground">{fmtINR(entry.igst)}</span>
                   </Td>
                   <Td right>
-                    <span className="text-sm font-medium text-foreground">{fmtINR(entry.collectedGST)}</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {fmtINR(entry.collectedGST)}
+                    </span>
                   </Td>
                   <Td right>
                     <span className="text-sm text-emerald-600">{fmtINR(entry.itcClaimed)}</span>
                   </Td>
                   <Td right>
-                    <span className="text-sm font-semibold text-amber-700">{fmtINR(entry.payableGST)}</span>
+                    <span className="text-sm font-semibold text-amber-700">
+                      {fmtINR(entry.payableGST)}
+                    </span>
                   </Td>
                   <Td>
                     <button
-                      onClick={() => handleFileGSTR(entry.month)}
-                      disabled={isFiled}
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                        isFiled
-                          ? "border border-emerald-200 bg-emerald-50 text-emerald-600 cursor-default"
-                          : "border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                      }`}
+                      onClick={() => exportMonth(entry)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-semibold text-indigo-700 transition-colors hover:bg-indigo-100"
                     >
                       <FileText className="h-3 w-3" />
-                      {isFiled ? "Filed" : "File GSTR"}
+                      Export CSV
                     </button>
                   </Td>
                 </motion.tr>
@@ -270,26 +284,30 @@ export function GSTSummaryTab() {
               <div className="rounded-xl bg-white/60 px-3 py-2.5 border border-blue-100">
                 <p className="text-xs font-semibold text-blue-700 mb-1">CGST — Central GST</p>
                 <p className="text-xs text-blue-600">
-                  Levied by the Central Government on intra-state supply of goods and services. Equal split with SGST.
+                  Levied by the Central Government on intra-state supply of goods and services.
+                  Equal split with SGST.
                 </p>
               </div>
               <div className="rounded-xl bg-white/60 px-3 py-2.5 border border-blue-100">
                 <p className="text-xs font-semibold text-blue-700 mb-1">SGST — State GST</p>
                 <p className="text-xs text-blue-600">
-                  Levied by the State Government on intra-state transactions. Collected alongside CGST at equal rates.
+                  Levied by the State Government on intra-state transactions. Collected alongside
+                  CGST at equal rates.
                 </p>
               </div>
               <div className="rounded-xl bg-white/60 px-3 py-2.5 border border-blue-100">
                 <p className="text-xs font-semibold text-blue-700 mb-1">IGST — Integrated GST</p>
                 <p className="text-xs text-blue-600">
-                  Applied on inter-state supply of goods/services and imports. Collected by Central Government and shared.
+                  Applied on inter-state supply of goods/services and imports. Collected by Central
+                  Government and shared.
                 </p>
               </div>
             </div>
             <div className="mt-3 flex items-center gap-2 text-xs text-blue-600">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               <span>
-                GST Registration: <strong>07AABCS1429B1ZB</strong> · Filing deadline: 20th of each month (GSTR-3B)
+                GST Registration: <strong>07AABCS1429B1ZB</strong> · Filing deadline: 20th of each
+                month (GSTR-3B)
               </span>
             </div>
           </div>

@@ -230,3 +230,912 @@
   -ms-overflow-style: none;
   &::-webkit-scrollbar { display: none; }
 }
+
+/* Landing page polish */
+.landing-page {
+  --shadow-card: 0 2px 5px oklch(0.14 0.02 260 / 0.035), 0 18px 48px -28px oklch(0.2 0.08 260 / 0.2);
+  overflow-x: clip;
+}
+
+.landing-page :focus-visible {
+  outline: 3px solid oklch(0.65 0.24 258 / 0.72);
+  outline-offset: 3px;
+}
+
+.landing-page a,
+.landing-page button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.landing-page main > section {
+  scroll-margin-top: 5rem;
+}
+
+.landing-page h1,
+.landing-page h2,
+.landing-page h3 {
+  text-wrap: balance;
+}
+
+.landing-hero {
+  background-color: oklch(0.995 0.004 250);
+  background-image:
+    radial-gradient(ellipse 48rem 35rem at 82% 26%, oklch(0.77 0.13 235 / 0.16), transparent 68%),
+    radial-gradient(ellipse 42rem 28rem at 8% 8%, oklch(0.82 0.12 258 / 0.13), transparent 70%);
+}
+
+.landing-hero h1 {
+  letter-spacing: -0.055em;
+}
+
+.landing-hero .glass {
+  border-color: oklch(1 0 0 / 0.82);
+  box-shadow: 0 28px 80px -32px oklch(0.19 0.09 260 / 0.32), 0 4px 18px oklch(0.19 0.09 260 / 0.08);
+}
+
+.landing-page input,
+.landing-page textarea {
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+@media (max-width: 639px) {
+  .landing-hero {
+    background-image:
+      radial-gradient(ellipse 32rem 26rem at 80% 16%, oklch(0.77 0.13 235 / 0.13), transparent 70%),
+      radial-gradient(ellipse 28rem 22rem at 0% 0%, oklch(0.82 0.12 258 / 0.12), transparent 72%);
+  }
+
+  .landing-hero h1 {
+    font-size: clamp(2.75rem, 12vw, 4rem);
+    line-height: 1.02;
+  }
+
+  .landing-page main > section {
+    scroll-margin-top: 4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *,
+  .landing-page *::before,
+  .landing-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Refined landing-page surfaces and responsive details */
+.landing-page {
+  --landing-border: oklch(0.91 0.015 258 / 0.8);
+}
+
+.landing-page > header {
+  border-bottom: 1px solid oklch(0.2 0.04 260 / 0.06);
+  background-color: oklch(1 0 0 / 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.landing-page > header nav a {
+  position: relative;
+  padding-block: 0.45rem;
+}
+
+.landing-page > header nav a::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--gradient-brand);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms ease;
+}
+
+.landing-page > header nav a:hover::after {
+  transform: scaleX(1);
+}
+
+.landing-page .landing-hero {
+  background-image:
+    radial-gradient(
+      ellipse 42rem 34rem at 82% 30%,
+      oklch(0.77 0.13 235 / 0.13),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 38rem 28rem at 8% 8%,
+      oklch(0.82 0.12 258 / 0.11),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.004 250),
+      oklch(0.985 0.01 250 / 0.55)
+    );
+}
+
+.landing-page .landing-hero h1 {
+  max-width: 12ch;
+  font-size: clamp(3.25rem, 6vw, 5rem);
+  line-height: 1.01;
+}
+
+.landing-page .landing-hero p {
+  text-wrap: pretty;
+}
+
+.landing-page .landing-hero .glass {
+  background-color: oklch(0.99 0.006 250 / 0.78);
+  border-color: oklch(1 0 0 / 0.9);
+  box-shadow:
+    0 34px 90px -42px oklch(0.2 0.09 260 / 0.38),
+    0 4px 20px oklch(0.2 0.09 260 / 0.08);
+}
+
+.landing-page main > section:not(.landing-hero) {
+  isolation: isolate;
+}
+
+.landing-page main > section:not(.landing-hero) h2 {
+  letter-spacing: -0.04em;
+}
+
+.landing-page main > section:not(.landing-hero) p {
+  text-wrap: pretty;
+}
+
+.landing-page main section .group.rounded-2xl,
+.landing-page main section .group.rounded-3xl {
+  box-shadow:
+    0 1px 2px oklch(0.14 0.02 260 / 0.035),
+    0 12px 32px -24px oklch(0.18 0.06 260 / 0.2);
+}
+
+.landing-page main section .group.rounded-2xl:hover,
+.landing-page main section .group.rounded-3xl:hover {
+  box-shadow:
+    0 2px 5px oklch(0.14 0.02 260 / 0.045),
+    0 22px 46px -28px oklch(0.2 0.08 260 / 0.25);
+}
+
+.landing-page #pricing .grid > div {
+  border-color: var(--landing-border);
+  box-shadow:
+    0 2px 5px oklch(0.14 0.02 260 / 0.035),
+    0 18px 42px -30px oklch(0.18 0.06 260 / 0.24);
+}
+
+.landing-page #pricing .grid > div[class*="bg-[color:var(--brand-deep)]"] {
+  border-color: oklch(0.65 0.2 258 / 0.48);
+}
+
+.landing-page #faq > div > div:last-of-type {
+  box-shadow:
+    0 2px 5px oklch(0.14 0.02 260 / 0.035),
+    0 20px 48px -32px oklch(0.18 0.06 260 / 0.2);
+}
+
+.landing-page #contact form {
+  border-color: var(--landing-border);
+  box-shadow:
+    0 2px 5px oklch(0.14 0.02 260 / 0.035),
+    0 24px 56px -36px oklch(0.18 0.06 260 / 0.22);
+}
+
+.landing-page #contact input:not(:disabled),
+.landing-page #contact textarea {
+  background-color: oklch(0.99 0.003 250);
+}
+
+.landing-page #contact input:not(:disabled):focus,
+.landing-page #contact textarea:focus {
+  background-color: white;
+  box-shadow: 0 0 0 4px oklch(0.65 0.24 258 / 0.12);
+}
+
+.landing-page a,
+.landing-page button {
+  touch-action: manipulation;
+}
+
+.landing-page button:active,
+.landing-page a.rounded-full:active {
+  transform: translateY(1px);
+}
+
+.landing-page footer a {
+  transition: color 160ms ease;
+}
+
+@media (min-width: 1600px) {
+  .landing-page main > section:not(.landing-hero) {
+    scroll-margin-top: 6rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-page main > section:not(.landing-hero) {
+    scroll-margin-top: 4.5rem;
+  }
+
+  .landing-page main > section:not(.landing-hero) > .mx-auto {
+    min-width: 0;
+  }
+
+  .landing-page .landing-hero h1 {
+    font-size: clamp(2.75rem, 10.5vw, 4rem);
+    line-height: 1.04;
+  }
+
+  .landing-page .landing-hero .glass {
+    padding: 0.5rem;
+  }
+
+  .landing-page #pricing .grid > div[class*="scale-"] {
+    scale: 1;
+  }
+}
+
+@media (max-width: 380px) {
+  .landing-page .landing-hero > .mx-auto.grid {
+    gap: 2rem;
+  }
+
+  .landing-page .landing-hero [class~="grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing-page #contact form {
+    padding: 1.25rem;
+  }
+}
+
+/* Brand-consistent visual system */
+.landing-page {
+  --landing-ink: oklch(0.2 0.035 263);
+  --landing-muted: oklch(0.49 0.025 260);
+  --landing-line: oklch(0.91 0.015 258 / 0.78);
+  --landing-lift: 0 18px 48px -30px oklch(0.2 0.09 260 / 0.28);
+}
+
+.landing-page .landing-hero {
+  background-image:
+    radial-gradient(
+      ellipse 42rem 34rem at 82% 30%,
+      oklch(0.77 0.13 235 / 0.17),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 38rem 28rem at 8% 8%,
+      oklch(0.82 0.12 258 / 0.14),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      oklch(0.995 0.004 250),
+      oklch(0.985 0.01 250 / 0.58)
+    );
+}
+
+.landing-page .landing-hero h1 {
+  color: var(--landing-ink);
+  letter-spacing: -0.06em;
+  text-wrap: balance;
+}
+
+.landing-page .landing-hero .text-gradient {
+  background-image: linear-gradient(
+    120deg,
+    oklch(0.28 0.13 263),
+    oklch(0.52 0.22 258) 55%,
+    oklch(0.68 0.16 230)
+  );
+}
+
+.landing-page .landing-hero .inline-flex.rounded-full {
+  box-shadow: 0 4px 16px oklch(0.62 0.22 258 / 0.09);
+}
+
+.landing-page .landing-hero > .mx-auto > div:first-child > div:first-child {
+  border-color: oklch(0.65 0.22 258 / 0.22);
+  background-color: oklch(0.99 0.008 250 / 0.82);
+}
+
+.landing-page .landing-hero .glass {
+  box-shadow:
+    0 36px 100px -44px oklch(0.2 0.09 260 / 0.42),
+    0 6px 24px oklch(0.2 0.09 260 / 0.1);
+}
+
+.landing-page a.rounded-full,
+.landing-page button.rounded-full {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.landing-page a.rounded-full:focus-visible,
+.landing-page button.rounded-full:focus-visible {
+  outline-offset: 4px;
+}
+
+.landing-page main > section {
+  position: relative;
+}
+
+.landing-page #features {
+  background:
+    radial-gradient(
+      ellipse 54rem 32rem at 50% 0%,
+      oklch(0.74 0.13 240 / 0.075),
+      transparent 70%
+    ),
+    linear-gradient(180deg, oklch(0.997 0.003 250), white 38%);
+}
+
+.landing-page #features > div:first-child {
+  opacity: 0.65;
+}
+
+.landing-page #features [class*="grid-cols-3"] > div,
+.landing-page #contact > div > div:last-child > div:first-child > div {
+  border-color: var(--landing-line);
+  background-image: linear-gradient(
+    145deg,
+    oklch(1 0 0),
+    oklch(0.99 0.005 250)
+  );
+  box-shadow:
+    0 1px 3px oklch(0.14 0.02 260 / 0.035),
+    0 14px 34px -26px oklch(0.18 0.06 260 / 0.22);
+}
+
+.landing-page #features [class*="grid-cols-3"] > div {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.landing-page #features [class*="grid-cols-3"] > div:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--landing-lift);
+}
+
+.landing-page #features [class*="inline-flex"][class*="rounded-2xl"] {
+  border-color: var(--landing-line);
+  background-color: oklch(0.98 0.008 255 / 0.88);
+}
+
+.landing-page #features [class*="inline-flex"][class*="rounded-xl"] {
+  box-shadow: 0 1px 3px oklch(0.14 0.02 260 / 0.08);
+}
+
+.landing-page #ai,
+.landing-page #contact {
+  background-color: oklch(0.22 0.09 265);
+  background-image:
+    radial-gradient(
+      ellipse 52rem 34rem at 8% 0%,
+      oklch(0.55 0.19 260 / 0.24),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 38rem 28rem at 100% 100%,
+      oklch(0.62 0.18 245 / 0.14),
+      transparent 68%
+    );
+}
+
+.landing-page #contact {
+  background-color: oklch(0.97 0.01 255);
+  background-image:
+    radial-gradient(
+      ellipse 42rem 30rem at 0% 0%,
+      oklch(0.75 0.13 250 / 0.11),
+      transparent 72%
+    ),
+    linear-gradient(180deg, oklch(0.985 0.006 250), oklch(0.97 0.01 255));
+}
+
+.landing-page #contact form,
+.landing-page #contact > div > div:last-child > div:first-child > div {
+  border-color: oklch(0.9 0.018 258 / 0.85);
+  background-color: oklch(1 0 0 / 0.9);
+}
+
+.landing-page #pricing {
+  background:
+    radial-gradient(
+      ellipse 46rem 30rem at 50% 0%,
+      oklch(0.75 0.12 240 / 0.07),
+      transparent 72%
+    ),
+    white;
+}
+
+.landing-page #pricing .grid > div {
+  border-radius: 1.65rem;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.landing-page
+  #pricing
+  .grid
+  > div:not([class*="bg-[color:var(--brand-deep)]"]):hover {
+  transform: translateY(-4px);
+}
+
+.landing-page #pricing .grid > div[class*="bg-[color:var(--brand-deep)]"] {
+  box-shadow:
+    0 28px 70px -34px oklch(0.32 0.16 262 / 0.55),
+    inset 0 1px oklch(1 0 0 / 0.12);
+}
+
+.landing-page
+  #pricing
+  .grid
+  > div[class*="bg-[color:var(--brand-deep)]"]::before {
+  position: absolute;
+  inset: 0 12% auto;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(0.82 0.13 235 / 0.8),
+    transparent
+  );
+  content: "";
+}
+
+.landing-page #faq > div > div:last-of-type {
+  border-color: var(--landing-line);
+  border-radius: 1.5rem;
+}
+
+.landing-page #faq button {
+  min-height: 4.5rem;
+}
+
+.landing-page footer {
+  background: linear-gradient(180deg, white, oklch(0.985 0.006 250));
+}
+
+.landing-page footer > div:first-child {
+  background: oklch(0.985 0.008 250 / 0.72);
+}
+
+.landing-page footer input {
+  min-width: 0;
+  background: white;
+}
+
+.landing-page footer a:hover {
+  color: oklch(0.48 0.2 258);
+}
+
+@media (min-width: 1024px) {
+  .landing-page .landing-hero > .mx-auto {
+    gap: clamp(3rem, 5vw, 5rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-page .landing-hero > .mx-auto {
+    gap: 2.75rem;
+  }
+
+  .landing-page .landing-hero h1 {
+    max-width: 11ch;
+    font-size: clamp(2.7rem, 10vw, 4rem);
+  }
+
+  .landing-page #features [class*="grid-cols-3"] > div {
+    padding-inline: 0.85rem;
+  }
+
+  .landing-page #pricing .grid {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .landing-page .landing-hero h1 {
+    font-size: clamp(2.45rem, 11vw, 2.9rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page a.rounded-full,
+  .landing-page button.rounded-full,
+  .landing-page #features [class*="grid-cols-3"] > div,
+  .landing-page #pricing .grid > div {
+    transition: none;
+  }
+}
+
+.landing-page .landing-hero {
+  isolation: isolate;
+}
+
+.landing-page .landing-hero::before {
+  position: absolute;
+  z-index: -1;
+  top: 5%;
+  right: -8rem;
+  width: min(68vw, 56rem);
+  aspect-ratio: 1;
+  border: 1px solid oklch(0.65 0.18 250 / 0.08);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 48% 48%,
+    oklch(0.72 0.15 236 / 0.13),
+    oklch(0.72 0.15 236 / 0.035) 38%,
+    transparent 68%
+  );
+  box-shadow:
+    inset 0 0 90px oklch(0.72 0.15 236 / 0.06),
+    0 0 100px oklch(0.62 0.18 258 / 0.045);
+  content: "";
+  pointer-events: none;
+}
+
+.landing-page .landing-hero::after {
+  position: absolute;
+  z-index: -1;
+  right: 8%;
+  bottom: 12%;
+  width: min(34vw, 25rem);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(0.62 0.18 258 / 0.22),
+    transparent
+  );
+  content: "";
+  pointer-events: none;
+}
+
+.landing-page .landing-hero > .mx-auto {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-page .landing-hero > .mx-auto > div:last-child {
+  perspective: 1400px;
+}
+
+.landing-page .landing-hero .glass {
+  transition:
+    box-shadow 240ms ease,
+    border-color 240ms ease;
+}
+
+.landing-page .landing-hero .glass:hover {
+  border-color: white;
+  box-shadow:
+    0 42px 110px -42px oklch(0.2 0.09 260 / 0.48),
+    0 8px 28px oklch(0.2 0.09 260 / 0.12);
+}
+
+.landing-page .landing-proof {
+  position: relative;
+  border-color: oklch(0.91 0.015 258 / 0.7);
+  background: linear-gradient(
+    90deg,
+    oklch(0.98 0.012 250 / 0.86),
+    white 22%,
+    white 78%,
+    oklch(0.98 0.012 250 / 0.86)
+  );
+}
+
+.landing-page .landing-proof [class*="grid-cols-2"] > div {
+  position: relative;
+}
+
+.landing-page .landing-proof [class*="grid-cols-2"] > div > p:first-child {
+  background: linear-gradient(
+    130deg,
+    oklch(0.24 0.1 263),
+    oklch(0.49 0.2 258) 62%,
+    oklch(0.6 0.16 230)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.landing-page
+  .landing-proof
+  [class*="grid-cols-2"]
+  > div:not(:last-child)::after {
+  position: absolute;
+  top: 18%;
+  right: -1rem;
+  width: 1px;
+  height: 64%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    oklch(0.65 0.16 255 / 0.2),
+    transparent
+  );
+  content: "";
+}
+
+.landing-page .landing-trust {
+  background: linear-gradient(180deg, white, oklch(0.99 0.005 250));
+}
+
+.landing-page .landing-trust .animate-marquee {
+  will-change: transform;
+}
+
+.landing-page .landing-trust:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+.landing-page .landing-trust span {
+  transition:
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.landing-page .landing-trust span:hover {
+  color: oklch(0.38 0.12 263);
+  transform: translateY(-1px);
+}
+
+.landing-page #ai .glass-dark {
+  border-color: oklch(1 0 0 / 0.16);
+  background:
+    linear-gradient(145deg, oklch(1 0 0 / 0.09), oklch(1 0 0 / 0.035)),
+    oklch(0.16 0.055 265 / 0.72);
+  box-shadow:
+    0 32px 90px -42px oklch(0.08 0.03 265 / 0.82),
+    inset 0 1px oklch(1 0 0 / 0.12);
+}
+
+.landing-page #ai .glass-dark input:disabled {
+  opacity: 0.78;
+}
+
+.landing-page #ai .glass-dark button:disabled,
+.landing-page #ai .glass-dark button {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.landing-page #ai .glass-dark button:hover {
+  box-shadow: 0 0 24px oklch(0.62 0.22 258 / 0.25);
+}
+
+.landing-page footer form {
+  border-radius: 999px;
+}
+
+.landing-page footer form input {
+  border-radius: 999px;
+}
+
+@media (max-width: 767px) {
+  .landing-page .landing-hero::before {
+    top: 18%;
+    right: -46%;
+    width: 110vw;
+    opacity: 0.72;
+  }
+
+  .landing-page .landing-hero::after {
+    right: 0;
+    bottom: 8%;
+    width: 58vw;
+  }
+
+  .landing-page
+    .landing-proof
+    [class*="grid-cols-2"]
+    > div:nth-child(2)::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page .landing-trust:hover .animate-marquee {
+    animation-play-state: running;
+  }
+
+  .landing-page .landing-trust span,
+  .landing-page .landing-hero .glass {
+    transition: none;
+  }
+}
+
+.landing-page > header {
+  background-image: linear-gradient(
+    90deg,
+    oklch(0.99 0.006 250 / 0.92),
+    oklch(1 0 0 / 0.84) 45%,
+    oklch(0.99 0.006 250 / 0.92)
+  );
+}
+
+.landing-page > header > div:first-child {
+  min-height: 4.5rem;
+}
+
+.landing-page > header > div:first-child > button {
+  border-color: oklch(0.86 0.025 258 / 0.8);
+  background: oklch(1 0 0 / 0.7);
+  box-shadow: 0 2px 8px oklch(0.2 0.04 260 / 0.06);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.landing-page > header > div:first-child > button:hover {
+  border-color: oklch(0.65 0.2 258 / 0.4);
+  background: white;
+  box-shadow: 0 5px 14px oklch(0.2 0.04 260 / 0.1);
+}
+
+.landing-page .landing-dashboard {
+  background:
+    radial-gradient(
+      ellipse 50rem 32rem at 50% 0%,
+      oklch(0.77 0.12 240 / 0.1),
+      transparent 74%
+    ),
+    linear-gradient(180deg, oklch(0.975 0.012 250), oklch(0.99 0.006 250));
+}
+
+.landing-page .landing-dashboard > div > div:last-child {
+  border-color: oklch(1 0 0 / 0.82);
+  background: oklch(1 0 0 / 0.72);
+  box-shadow:
+    0 35px 90px -48px oklch(0.2 0.09 260 / 0.34),
+    0 4px 16px oklch(0.2 0.06 260 / 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.landing-page .landing-dashboard > div > div:last-child:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 42px 100px -48px oklch(0.2 0.09 260 / 0.4),
+    0 5px 20px oklch(0.2 0.06 260 / 0.08);
+}
+
+.landing-page .landing-testimonials {
+  background:
+    radial-gradient(
+      ellipse 54rem 30rem at 50% 0%,
+      oklch(0.74 0.13 240 / 0.11),
+      transparent 74%
+    ),
+    linear-gradient(180deg, oklch(0.98 0.01 250), oklch(0.995 0.003 250));
+}
+
+.landing-page .landing-testimonials figure {
+  position: relative;
+  overflow: hidden;
+  border-color: oklch(0.9 0.018 258 / 0.85);
+  background: linear-gradient(150deg, white 55%, oklch(0.985 0.009 250));
+  box-shadow:
+    0 2px 6px oklch(0.14 0.02 260 / 0.035),
+    0 20px 45px -34px oklch(0.2 0.07 260 / 0.22);
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+
+.landing-page .landing-testimonials figure::before {
+  position: absolute;
+  top: 0;
+  left: 2rem;
+  width: 3rem;
+  height: 2px;
+  background: var(--gradient-brand);
+  content: "";
+}
+
+.landing-page .landing-testimonials figure:hover {
+  transform: translateY(-3px);
+  border-color: oklch(0.7 0.16 258 / 0.36);
+  box-shadow: 0 28px 58px -36px oklch(0.2 0.07 260 / 0.3);
+}
+
+.landing-page .landing-roadmap {
+  background:
+    radial-gradient(
+      ellipse 48rem 28rem at 50% 0%,
+      oklch(0.75 0.12 240 / 0.08),
+      transparent 75%
+    ),
+    white;
+}
+
+.landing-page .landing-roadmap .grid > div {
+  border-color: oklch(0.9 0.016 258 / 0.82);
+  background: linear-gradient(145deg, white 55%, oklch(0.99 0.006 250));
+  box-shadow:
+    0 2px 5px oklch(0.14 0.02 260 / 0.03),
+    0 16px 38px -28px oklch(0.2 0.07 260 / 0.2);
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.landing-page .landing-roadmap .grid > div:hover {
+  transform: translateY(-3px);
+  border-color: oklch(0.68 0.16 258 / 0.34);
+  box-shadow: 0 26px 54px -34px oklch(0.2 0.07 260 / 0.28);
+}
+
+.landing-page .landing-cta > div > div {
+  border: 1px solid oklch(1 0 0 / 0.12);
+  box-shadow:
+    0 38px 100px -42px oklch(0.18 0.1 263 / 0.62),
+    inset 0 1px oklch(1 0 0 / 0.12);
+}
+
+.landing-page .landing-cta > div > div::after {
+  position: absolute;
+  inset: 1px;
+  border: 1px solid oklch(1 0 0 / 0.07);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.landing-page .landing-cta h2 {
+  text-wrap: balance;
+  text-shadow: 0 2px 30px oklch(0.75 0.15 245 / 0.16);
+}
+
+.landing-page .landing-cta a.rounded-full:hover {
+  box-shadow: 0 12px 32px oklch(0.07 0.03 265 / 0.24);
+}
+
+@media (max-width: 767px) {
+  .landing-page .landing-dashboard > div > div:last-child {
+    padding: 0.5rem;
+  }
+
+  .landing-page .landing-testimonials figure {
+    padding: 1.5rem;
+  }
+
+  .landing-page .landing-cta > div > div {
+    border-radius: 1.75rem;
+    padding: 3rem 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page .landing-dashboard > div > div:last-child,
+  .landing-page .landing-testimonials figure,
+  .landing-page .landing-roadmap .grid > div {
+    transition: none;
+  }
+}

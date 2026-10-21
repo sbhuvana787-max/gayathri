@@ -15,18 +15,19 @@ import {
   Receipt,
 } from "lucide-react";
 
-import { OverviewTab }      from "../../../components/finance/tabs/OverviewTab";
-import { IncomeTab }        from "../../../components/finance/tabs/IncomeTab";
-import { ExpensesTab }      from "../../../components/finance/tabs/ExpensesTab";
-import { CashbookTab }      from "../../../components/finance/tabs/CashbookTab";
-import { BankAccountsTab }  from "../../../components/finance/tabs/BankAccountsTab";
-import { TransactionsTab }  from "../../../components/finance/tabs/TransactionsTab";
-import { GSTSummaryTab }    from "../../../components/finance/tabs/GSTSummaryTab";
-import { ProfitLossTab }    from "../../../components/finance/tabs/ProfitLossTab";
-import { ReceivablesTab }   from "../../../components/finance/tabs/ReceivablesTab";
-import { PayablesTab }      from "../../../components/finance/tabs/PayablesTab";
-import { ReportsTab }       from "../../../components/finance/tabs/ReportsTab";
+import { OverviewTab } from "../../../components/finance/tabs/OverviewTab";
+import { IncomeTab } from "../../../components/finance/tabs/IncomeTab";
+import { ExpensesTab } from "../../../components/finance/tabs/ExpensesTab";
+import { CashbookTab } from "../../../components/finance/tabs/CashbookTab";
+import { BankAccountsTab } from "../../../components/finance/tabs/BankAccountsTab";
+import { TransactionsTab } from "../../../components/finance/tabs/TransactionsTab";
+import { GSTSummaryTab } from "../../../components/finance/tabs/GSTSummaryTab";
+import { ProfitLossTab } from "../../../components/finance/tabs/ProfitLossTab";
+import { ReceivablesTab } from "../../../components/finance/tabs/ReceivablesTab";
+import { PayablesTab } from "../../../components/finance/tabs/PayablesTab";
+import { ReportsTab } from "../../../components/finance/tabs/ReportsTab";
 import { FinanceSettingsTab } from "../../../components/finance/tabs/FinanceSettingsTab";
+import { useBusiness } from "../../../contexts/BusinessContext";
 
 export const Route = createFileRoute("/_authenticated/_app/finance")({
   component: FinancePage,
@@ -55,24 +56,25 @@ interface FinanceNavItem {
 }
 
 const navItems: FinanceNavItem[] = [
-  { id: "overview",      label: "Overview",         icon: LayoutGrid      },
-  { id: "income",        label: "Income",            icon: TrendingUp      },
-  { id: "expenses",      label: "Expenses",          icon: TrendingDown    },
-  { id: "cashbook",      label: "Cashbook",          icon: BookOpen        },
-  { id: "bank-accounts", label: "Bank Accounts",     icon: Building2       },
-  { id: "transactions",  label: "Transactions",      icon: ArrowLeftRight  },
-  { id: "gst-summary",   label: "GST Summary",       icon: Receipt         },
-  { id: "profit-loss",   label: "Profit & Loss",     icon: BarChart3       },
-  { id: "receivables",   label: "Receivables",       icon: Users           },
-  { id: "payables",      label: "Payables",          icon: Truck           },
-  { id: "reports",       label: "Finance Reports",   icon: FileText        },
-  { id: "settings",      label: "Finance Settings",  icon: Settings        },
+  { id: "overview", label: "Overview", icon: LayoutGrid },
+  { id: "income", label: "Income", icon: TrendingUp },
+  { id: "expenses", label: "Expenses", icon: TrendingDown },
+  { id: "cashbook", label: "Cashbook", icon: BookOpen },
+  { id: "bank-accounts", label: "Bank Accounts", icon: Building2 },
+  { id: "transactions", label: "Transactions", icon: ArrowLeftRight },
+  { id: "gst-summary", label: "GST Summary", icon: Receipt },
+  { id: "profit-loss", label: "Profit & Loss", icon: BarChart3 },
+  { id: "receivables", label: "Receivables", icon: Users },
+  { id: "payables", label: "Payables", icon: Truck },
+  { id: "reports", label: "Finance Reports", icon: FileText },
+  { id: "settings", label: "Finance Settings", icon: Settings },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────
 
 function FinancePage() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const { business } = useBusiness();
 
   return (
     <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
@@ -86,12 +88,16 @@ function FinancePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-              FY 2025–26
-            </span>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-muted-foreground">
-              GSTIN: 07AABCS1429B1ZB
-            </span>
+            {business?.financial_year && (
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                FY {business.financial_year}
+              </span>
+            )}
+            {business?.gst_number && (
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-muted-foreground">
+                GSTIN: {business.gst_number}
+              </span>
+            )}
           </div>
         </div>
 
@@ -121,18 +127,20 @@ function FinancePage() {
 
         {/* Active tab content */}
         <div>
-          {activeTab === "overview"      && <OverviewTab onNavigate={(id) => setActiveTab(id as TabId)} />}
-          {activeTab === "income"        && <IncomeTab />}
-          {activeTab === "expenses"      && <ExpensesTab />}
-          {activeTab === "cashbook"      && <CashbookTab />}
+          {activeTab === "overview" && (
+            <OverviewTab onNavigate={(id) => setActiveTab(id as TabId)} />
+          )}
+          {activeTab === "income" && <IncomeTab />}
+          {activeTab === "expenses" && <ExpensesTab />}
+          {activeTab === "cashbook" && <CashbookTab />}
           {activeTab === "bank-accounts" && <BankAccountsTab />}
-          {activeTab === "transactions"  && <TransactionsTab />}
-          {activeTab === "gst-summary"   && <GSTSummaryTab />}
-          {activeTab === "profit-loss"   && <ProfitLossTab />}
-          {activeTab === "receivables"   && <ReceivablesTab />}
-          {activeTab === "payables"      && <PayablesTab />}
-          {activeTab === "reports"       && <ReportsTab />}
-          {activeTab === "settings"      && <FinanceSettingsTab />}
+          {activeTab === "transactions" && <TransactionsTab />}
+          {activeTab === "gst-summary" && <GSTSummaryTab />}
+          {activeTab === "profit-loss" && <ProfitLossTab />}
+          {activeTab === "receivables" && <ReceivablesTab />}
+          {activeTab === "payables" && <PayablesTab />}
+          {activeTab === "reports" && <ReportsTab />}
+          {activeTab === "settings" && <FinanceSettingsTab />}
         </div>
       </div>
     </div>

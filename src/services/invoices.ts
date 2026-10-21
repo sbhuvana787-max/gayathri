@@ -8,7 +8,13 @@
 
 import { supabase } from "../lib/supabase";
 import { inventoryMovementsService } from "./inventoryMovements";
-import type { Invoice, InvoiceItem, InvoiceStatus, PaymentStatus, PaymentMode } from "../lib/billing-data";
+import type {
+  Invoice,
+  InvoiceItem,
+  InvoiceStatus,
+  PaymentStatus,
+  PaymentMode,
+} from "../lib/billing-data";
 import type { DbProduct } from "./products";
 
 // ── UUID validation ───────────────────────────────────────────────
@@ -66,7 +72,9 @@ export interface DbInvoiceWithItems extends DbInvoice {
 }
 
 export type DbInvoiceInsert = Omit<DbInvoice, "id" | "created_at" | "updated_at">;
-export type DbInvoiceUpdate = Partial<Omit<DbInvoice, "id" | "business_id" | "created_at" | "updated_at">>;
+export type DbInvoiceUpdate = Partial<
+  Omit<DbInvoice, "id" | "business_id" | "created_at" | "updated_at">
+>;
 export type DbInvoiceItemInsert = Omit<DbInvoiceItem, "id" | "created_at">;
 
 // ── Adapters ──────────────────────────────────────────────────────
@@ -80,15 +88,13 @@ export function dbToInvoice(row: DbInvoiceWithItems): Invoice {
     status: row.status as InvoiceStatus,
     paymentStatus: row.payment_status as PaymentStatus,
     paymentMode: row.payment_mode as PaymentMode,
-    items: (row.invoice_items ?? []).map(
-      (item): InvoiceItem => ({
-        productId: item.product_id ?? "",
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        discountPercent: item.discount_percent,
-        gstPercent: item.gst_percent,
-      })
-    ),
+    items: (row.invoice_items ?? []).map((item): InvoiceItem => ({
+      productId: item.product_id ?? "",
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      discountPercent: item.discount_percent,
+      gstPercent: item.gst_percent,
+    })),
     createdDate: row.invoice_date,
     dueDate: row.due_date ?? "",
     amountPaid: row.amount_paid,
@@ -112,8 +118,7 @@ export function dbToInvoice(row: DbInvoiceWithItems): Invoice {
 function invoiceToDbInsert(invoice: Invoice, businessId: string): DbInvoiceInsert {
   return {
     business_id: businessId,
-    customer_id:
-      invoice.customerId && isUUID(invoice.customerId) ? invoice.customerId : null,
+    customer_id: invoice.customerId && isUUID(invoice.customerId) ? invoice.customerId : null,
     invoice_number: invoice.invoiceNumber,
     invoice_date: invoice.createdDate,
     due_date: invoice.dueDate || null,
@@ -145,13 +150,18 @@ export const invoicesService = {
    * with their invoice_items embedded.
    */
   async getAll(businessId: string): Promise<Invoice[]> {
-    const { data, error } = await supabase
-      .from("invoices")
-      .select("*, invoice_items(*)")
-      .eq("business_id", businessId)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return ((data ?? []) as DbInvoiceWithItems[]).map(dbToInvoice);
+    const rows: DbInvoiceWithItems[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("*, invoice_items(*)")
+        .eq("business_id", businessId)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + 999);
+      if (error) throw error;
+      rows.push(...((data ?? []) as DbInvoiceWithItems[]));
+      if (!data || data.length < 1000) return rows.map(dbToInvoice);
+    }
   },
 
   /**
@@ -166,7 +176,7 @@ export const invoicesService = {
     invoice: Invoice,
     businessId: string,
     dbProducts: DbProduct[] = [],
-    skipMovements = false
+    skipMovements = false,
   ): Promise<Invoice> {
     const productNameMap = new Map(dbProducts.map((p) => [p.id, p.name]));
     const productSkuMap = new Map(dbProducts.map((p) => [p.id, p.sku]));
@@ -194,29 +204,28 @@ export const invoicesService = {
     }));
 
     if (itemsPayload.length > 0) {
-      const { error: itemsErr } = await supabase
-        .from("invoice_items")
-        .insert(itemsPayload);
+      const { error: itemsErr } = await supabase.from("invoice_items").insert(itemsPayload);
       if (itemsErr) throw itemsErr;
     }
 
     // 3. Create stock-out movements (skipped for duplicates/drafts without actual sale)
-    if (!skipMovements) for (const item of invoice.items) {
-      if (!item.productId || !isUUID(item.productId)) continue;
-      await inventoryMovementsService.create({
-        business_id: businessId,
-        product_id: item.productId,
-        movement_type: "out",
-        adjustment_type: null,
-        adjustment_reason: null,
-        quantity: item.quantity,
-        reference: savedInv.invoice_number,
-        supplier_id: null,
-        reason: "Invoice sale",
-        notes: `Invoice ${savedInv.invoice_number}`,
-        created_by: null,
-      });
-    }
+    if (!skipMovements)
+      for (const item of invoice.items) {
+        if (!item.productId || !isUUID(item.productId)) continue;
+        await inventoryMovementsService.create({
+          business_id: businessId,
+          product_id: item.productId,
+          movement_type: "out",
+          adjustment_type: null,
+          adjustment_reason: null,
+          quantity: item.quantity,
+          reference: savedInv.invoice_number,
+          supplier_id: null,
+          reason: "Invoice sale",
+          notes: `Invoice ${savedInv.invoice_number}`,
+          created_by: null,
+        });
+      }
 
     // Return mapped invoice (re-attach items from the original)
     return dbToInvoice({
@@ -240,16 +249,9 @@ export const invoicesService = {
   /**
    * Update invoice metadata (does NOT re-create stock movements).
    */
-  async update(
-    id: string,
-    invoice: Invoice,
-    businessId: string
-  ): Promise<Invoice> {
+  async update(id: string, invoice: Invoice, businessId: string): Promise<Invoice> {
     const payload: DbInvoiceUpdate = {
-      customer_id:
-        invoice.customerId && isUUID(invoice.customerId)
-          ? invoice.customerId
-          : null,
+      customer_id: invoice.customerId && isUUID(invoice.customerId) ? invoice.customerId : null,
       invoice_date: invoice.createdDate,
       due_date: invoice.dueDate || null,
       status: invoice.status,

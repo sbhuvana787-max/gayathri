@@ -7,7 +7,11 @@ import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 export function fmtDate(d: string) {
-  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(d + "T00:00:00").toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function SectionCard({
@@ -105,7 +109,9 @@ export function StatusPill({ status, label }: { status: string; label?: string }
   const cls = statusStyles[status] ?? "bg-slate-100 text-slate-600 border-slate-200";
   const text = label ?? status.replace(/-/g, " ");
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${cls}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${cls}`}
+    >
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {text}
     </span>
@@ -154,7 +160,9 @@ export function Select({
       className={`h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm text-foreground outline-none transition-colors focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)] ${className}`}
     >
       {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
       ))}
     </select>
   );
@@ -172,7 +180,9 @@ export function Pagination({
   if (totalPages <= 1) return null;
   return (
     <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3">
-      <p className="text-xs text-muted-foreground">Page {page} of {totalPages}</p>
+      <p className="text-xs text-muted-foreground">
+        Page {page} of {totalPages}
+      </p>
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => onChange(Math.max(1, page - 1))}
@@ -243,7 +253,17 @@ export function SecondaryButton({
   );
 }
 
-export function EmptyState({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle?: string }) {
+export function EmptyState({
+  icon: Icon,
+  title,
+  subtitle,
+  action,
+}: {
+  icon: React.ElementType;
+  title: string;
+  subtitle?: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
@@ -251,6 +271,7 @@ export function EmptyState({ icon: Icon, title, subtitle }: { icon: React.Elemen
       </div>
       <p className="text-sm font-semibold text-foreground">{title}</p>
       {subtitle && <p className="mt-1 max-w-xs text-xs text-muted-foreground">{subtitle}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }

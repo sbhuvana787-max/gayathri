@@ -98,48 +98,43 @@ export interface DashboardData {
 // ── Hook ──────────────────────────────────────────────────────────────
 
 export function useDashboardData(businessId: string | null) {
-  const invoicesQ  = useInvoices(businessId);
+  const invoicesQ = useInvoices(businessId);
   const customersQ = useCustomers(businessId);
-  const productsQ  = useProducts(businessId);
+  const productsQ = useProducts(businessId);
   const movementsQ = useInventoryMovements(businessId);
 
   const isLoading =
-    invoicesQ.isLoading ||
-    customersQ.isLoading ||
-    productsQ.isLoading ||
-    movementsQ.isLoading;
+    invoicesQ.isLoading || customersQ.isLoading || productsQ.isLoading || movementsQ.isLoading;
 
-  const isError =
-    invoicesQ.isError || customersQ.isError || productsQ.isError;
+  const isError = invoicesQ.isError || customersQ.isError || productsQ.isError;
 
   const data = useMemo<DashboardData>(() => {
-    const invoices   = invoicesQ.data  ?? [];
-    const customers  = customersQ.data ?? [];
-    const dbProducts = productsQ.data  ?? [];
-    const movements  = movementsQ.data ?? [];
+    const invoices = invoicesQ.data ?? [];
+    const customers = customersQ.data ?? [];
+    const dbProducts = productsQ.data ?? [];
+    const movements = movementsQ.data ?? [];
 
-    const products       = dbProducts.map(dbToProduct);
+    const products = dbProducts.map(dbToProduct);
     const customerNameMap = new Map(customers.map((c) => [c.id, c.name]));
-    const productNameMap  = new Map(dbProducts.map((p) => [p.id, p.name]));
+    const productNameMap = new Map(dbProducts.map((p) => [p.id, p.name]));
 
-    const now           = new Date();
-    const thisMonthStr  = monthKey(now);
+    const now = new Date();
+    const thisMonthStr = monthKey(now);
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthStr  = monthKey(lastMonthDate);
+    const lastMonthStr = monthKey(lastMonthDate);
 
     // ── Revenue per calendar date ─────────────────────────────────
     const revenueByDate: Record<string, number> = {};
     invoices.forEach((inv) => {
       if (inv.status === "cancelled") return;
-      revenueByDate[inv.createdDate] =
-        (revenueByDate[inv.createdDate] ?? 0) + grandTotal(inv);
+      revenueByDate[inv.createdDate] = (revenueByDate[inv.createdDate] ?? 0) + grandTotal(inv);
     });
 
     // ── Revenue Overview chart — last 13 calendar days ────────────
     const revenueChartPoints = Array.from({ length: 13 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (12 - i));
-      const key   = d.toISOString().slice(0, 10);
+      const key = d.toISOString().slice(0, 10);
       const label = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
       return { date: label, revenue: revenueByDate[key] ?? 0 };
     });
@@ -147,9 +142,7 @@ export function useDashboardData(businessId: string | null) {
     // Daily average of all-time revenue as a rolling target
     const allRevValues = Object.values(revenueByDate);
     const avgDaily =
-      allRevValues.length > 0
-        ? allRevValues.reduce((a, b) => a + b, 0) / allRevValues.length
-        : 0;
+      allRevValues.length > 0 ? allRevValues.reduce((a, b) => a + b, 0) / allRevValues.length : 0;
     const target = Math.round(avgDaily * 1.1);
 
     const revenueData: DashboardRevenuePoint[] = revenueChartPoints.map((d) => ({
@@ -159,8 +152,9 @@ export function useDashboardData(businessId: string | null) {
 
     // ── Sales Trend — current Mon–Sun week ────────────────────────
     const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const salesCountByDay: Record<string, { sales: number; returns: number }> =
-      Object.fromEntries(DAY_NAMES.map((d) => [d, { sales: 0, returns: 0 }]));
+    const salesCountByDay: Record<string, { sales: number; returns: number }> = Object.fromEntries(
+      DAY_NAMES.map((d) => [d, { sales: 0, returns: 0 }]),
+    );
 
     // Start of current week (Monday)
     const weekStart = new Date(now);
@@ -172,7 +166,7 @@ export function useDashboardData(businessId: string | null) {
       if (d < weekStart) return;
       // getDay(): 0=Sun,1=Mon…6=Sat  → map to Mon=0…Sun=6
       const dayIndex = (d.getDay() + 6) % 7;
-      const dayName  = DAY_NAMES[dayIndex];
+      const dayName = DAY_NAMES[dayIndex];
       if (inv.status === "cancelled") {
         salesCountByDay[dayName].returns++;
       } else {
@@ -190,11 +184,8 @@ export function useDashboardData(businessId: string | null) {
     invoices.forEach((inv) => {
       if (inv.status === "cancelled") return;
       (inv.items ?? []).forEach((item) => {
-        const key  = item.productId || item.productName || "unknown";
-        const name =
-          item.productName ||
-          (item.productId && productNameMap.get(item.productId)) ||
-          "Unknown Product";
+        const key = item.productId || "unknown";
+        const name = (item.productId && productNameMap.get(item.productId)) || "Unknown Product";
         const rev = (item.quantity ?? 0) * (item.unitPrice ?? 0);
         if (!productRevMap[key]) productRevMap[key] = { name, sales: 0 };
         productRevMap[key].sales += rev;
@@ -209,19 +200,11 @@ export function useDashboardData(businessId: string | null) {
 
     // ── Monthly revenue (this month vs last month) ─────────────────
     const thisMonthRevenue = invoices
-      .filter(
-        (inv) =>
-          inv.createdDate.startsWith(thisMonthStr) &&
-          inv.status !== "cancelled"
-      )
+      .filter((inv) => inv.createdDate.startsWith(thisMonthStr) && inv.status !== "cancelled")
       .reduce((s, inv) => s + grandTotal(inv), 0);
 
     const lastMonthRevenue = invoices
-      .filter(
-        (inv) =>
-          inv.createdDate.startsWith(lastMonthStr) &&
-          inv.status !== "cancelled"
-      )
+      .filter((inv) => inv.createdDate.startsWith(lastMonthStr) && inv.status !== "cancelled")
       .reduce((s, inv) => s + grandTotal(inv), 0);
 
     const growthNum =
@@ -231,8 +214,7 @@ export function useDashboardData(businessId: string | null) {
           ? 100
           : 0;
 
-    const monthlyGrowth =
-      growthNum >= 0 ? `+${growthNum.toFixed(1)}%` : `${growthNum.toFixed(1)}%`;
+    const monthlyGrowth = growthNum >= 0 ? `+${growthNum.toFixed(1)}%` : `${growthNum.toFixed(1)}%`;
     const monthlyGrowthPositive = growthNum >= 0;
 
     // ── Activity Feed — invoices + movements + low-stock ──────────
@@ -243,13 +225,13 @@ export function useDashboardData(businessId: string | null) {
       .sort(
         (a, b) =>
           new Date(b.createdDate + "T00:00:00").getTime() -
-          new Date(a.createdDate + "T00:00:00").getTime()
+          new Date(a.createdDate + "T00:00:00").getTime(),
       )
       .slice(0, 20)
       .forEach((inv) => {
         const cname = customerNameMap.get(inv.customerId) ?? "Customer";
         const total = grandTotal(inv);
-        const ts    = new Date(inv.createdDate + "T00:00:00").getTime();
+        const ts = new Date(inv.createdDate + "T00:00:00").getTime();
 
         if (inv.status === "paid") {
           activityItems.push({
@@ -290,15 +272,13 @@ export function useDashboardData(businessId: string | null) {
     // Inventory movement events (latest 10)
     movements.slice(0, 10).forEach((m) => {
       const pname = productNameMap.get(m.product_id) ?? "Product";
-      const isIn  = m.movement_type === "in";
-      const qty   = isIn ? `+${m.quantity}` : `-${m.quantity}`;
-      const ts    = new Date(m.created_at).getTime();
+      const isIn = m.movement_type === "in";
+      const qty = isIn ? `+${m.quantity}` : `-${m.quantity}`;
+      const ts = new Date(m.created_at).getTime();
       activityItems.push({
         key: `mv-${m.id}`,
         icon: isIn ? "✅" : "📦",
-        color: isIn
-          ? "bg-emerald-50 text-emerald-600"
-          : "bg-red-50 text-red-600",
+        color: isIn ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600",
         label: isIn ? "Stock updated" : "Stock removed",
         sub: `${pname} — ${qty} units`,
         time: timeAgo(m.created_at),
@@ -309,10 +289,7 @@ export function useDashboardData(businessId: string | null) {
 
     // Customer added events (latest 5)
     [...customers]
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
       .forEach((c) => {
         const ts = new Date(c.created_at).getTime();
@@ -354,8 +331,7 @@ export function useDashboardData(businessId: string | null) {
     // ── Business Health metrics ───────────────────────────────────
     // Revenue Growth
     const revScore = Math.min(100, Math.max(0, 50 + growthNum));
-    const revValueStr =
-      growthNum >= 0 ? `+${growthNum.toFixed(0)}%` : `${growthNum.toFixed(0)}%`;
+    const revValueStr = growthNum >= 0 ? `+${growthNum.toFixed(0)}%` : `${growthNum.toFixed(0)}%`;
 
     // Inventory Health
     const alertCount = products.filter((p) => {
@@ -363,23 +339,17 @@ export function useDashboardData(businessId: string | null) {
       return s === "low-stock" || s === "critical" || s === "out-of-stock";
     }).length;
     const invScore =
-      products.length > 0
-        ? Math.round((1 - alertCount / products.length) * 100)
-        : 100;
+      products.length > 0 ? Math.round((1 - alertCount / products.length) * 100) : 100;
 
     // Customer Growth (new this month)
-    const newCustomers = customers.filter((c) =>
-      c.created_at.startsWith(thisMonthStr)
-    ).length;
+    const newCustomers = customers.filter((c) => c.created_at.startsWith(thisMonthStr)).length;
     const custScore = Math.min(100, 50 + newCustomers * 10);
-    const custValueStr =
-      newCustomers > 0 ? `+${newCustomers} new` : "No new";
+    const custValueStr = newCustomers > 0 ? `+${newCustomers} new` : "No new";
 
     // Payment Recovery
-    const paidCount       = invoices.filter((i) => i.status === "paid").length;
-    const nonCancelled    = invoices.filter((i) => i.status !== "cancelled").length;
-    const collectionRate  =
-      nonCancelled > 0 ? Math.round((paidCount / nonCancelled) * 100) : 100;
+    const paidCount = invoices.filter((i) => i.status === "paid").length;
+    const nonCancelled = invoices.filter((i) => i.status !== "cancelled").length;
+    const collectionRate = nonCancelled > 0 ? Math.round((paidCount / nonCancelled) * 100) : 100;
 
     const healthMetrics: DashboardHealthMetric[] = [
       {
@@ -416,15 +386,10 @@ export function useDashboardData(businessId: string | null) {
       },
     ];
 
-    const overallScore = Math.round(
-      (revScore + invScore + custScore + collectionRate) / 4
-    );
+    const overallScore = Math.round((revScore + invScore + custScore + collectionRate) / 4);
 
     // ── AI Insight ────────────────────────────────────────────────
-    const isEmpty =
-      invoices.length === 0 &&
-      products.length === 0 &&
-      customers.length === 0;
+    const isEmpty = invoices.length === 0 && products.length === 0 && customers.length === 0;
 
     let aiInsight: string;
     if (isEmpty) {
@@ -436,17 +401,14 @@ export function useDashboardData(businessId: string | null) {
         .map((p) => p.name)
         .join(" and ");
       const rev =
-        thisMonthRevenue > 0
-          ? `Your revenue this month is ${fmtINR(thisMonthRevenue)}. `
-          : "";
+        thisMonthRevenue > 0 ? `Your revenue this month is ${fmtINR(thisMonthRevenue)}. ` : "";
       aiInsight = `${rev}Consider restocking ${names} to avoid stockouts.`;
     } else if (growthNum > 0 && lastMonthRevenue > 0) {
       aiInsight = `Revenue is up ${growthNum.toFixed(0)}% this month vs last month. You have ${paidCount} paid invoice${paidCount !== 1 ? "s" : ""} collected so far.`;
     } else if (invoices.length > 0) {
       aiInsight = `You have ${invoices.length} invoice${invoices.length !== 1 ? "s" : ""} and ${customers.length} customer${customers.length !== 1 ? "s" : ""} registered. Keep growing!`;
     } else {
-      aiInsight =
-        "Start adding invoices and customers to see live business insights here.";
+      aiInsight = "Start adding invoices and customers to see live business insights here.";
     }
 
     return {
@@ -462,12 +424,7 @@ export function useDashboardData(businessId: string | null) {
       aiInsight,
       isEmpty,
     };
-  }, [
-    invoicesQ.data,
-    customersQ.data,
-    productsQ.data,
-    movementsQ.data,
-  ]);
+  }, [invoicesQ.data, customersQ.data, productsQ.data, movementsQ.data]);
 
   return { data, isLoading, isError };
 }

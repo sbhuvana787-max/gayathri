@@ -1,8 +1,9 @@
 // ── CRM Settings Tab ──────────────────────────────────────────────
 import { useState, useEffect } from "react";
 import { Check, Hash, Globe, CreditCard, Tag, Plus, X, ShieldCheck } from "lucide-react";
-import { crmSettings } from "@/lib/crm-data";
 import { SectionCard, PrimaryButton, Select } from "@/components/crm/shared";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { useCrmSettings, useSaveCrmSettings } from "@/hooks/useCrmQuery";
 
 // ── Saved Banner ──────────────────────────────────────────────────
 function SavedBanner({ visible }: { visible: boolean }) {
@@ -16,7 +17,15 @@ function SavedBanner({ visible }: { visible: boolean }) {
 }
 
 // ── Field wrapper ─────────────────────────────────────────────────
-function Field({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-foreground">{label}</label>
@@ -27,7 +36,15 @@ function Field({ label, description, children }: { label: string; description?: 
 }
 
 // ── Text input ─────────────────────────────────────────────────────
-function TextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+function TextInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
   return (
     <input
       type="text"
@@ -40,7 +57,15 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
 }
 
 // ── Number input ───────────────────────────────────────────────────
-function NumberInput({ value, onChange, min = 0 }: { value: number; onChange: (v: number) => void; min?: number }) {
+function NumberInput({
+  value,
+  onChange,
+  min = 0,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+}) {
   return (
     <input
       type="number"
@@ -95,28 +120,58 @@ const CREDIT_DAYS_OPTIONS = [
 
 // ── Main Tab ──────────────────────────────────────────────────────
 export function CrmSettingsTab() {
-  // Seeded from crmSettings (local state only, not persisted)
-  const [prefix, setPrefix] = useState(crmSettings.customerNumberPrefix);
-  const [nextValue, setNextValue] = useState(crmSettings.customerNumberNextValue);
-  const [creditDays, setCreditDays] = useState(String(crmSettings.defaultCreditDays));
-  const [currency, setCurrency] = useState(crmSettings.defaultCurrency);
-  const [country, setCountry] = useState(crmSettings.defaultCountry);
-  const [categories, setCategories] = useState<string[]>([...crmSettings.customerCategories]);
+  const { business } = useBusiness();
+  const businessId = business?.id ?? null;
+  const settingsQuery = useCrmSettings(businessId);
+  const saveSettings = useSaveCrmSettings(businessId);
+  const settings = settingsQuery.data;
+  const [prefix, setPrefix] = useState("CUS");
+  const [nextValue, setNextValue] = useState(1);
+  const [creditDays, setCreditDays] = useState("30");
+  const [currency, setCurrency] = useState("INR");
+  const [country, setCountry] = useState("India");
+  const [categories, setCategories] = useState<string[]>(["Retail", "Wholesale", "Corporate"]);
   const [newCategory, setNewCategory] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (!settings) return;
+    setPrefix(settings.customer_number_prefix);
+    setNextValue(settings.customer_number_next_value);
+    setCreditDays(String(settings.default_credit_days));
+    setCurrency(settings.default_currency);
+    setCountry(settings.default_country);
+    setCategories(settings.customer_categories);
+  }, [settings]);
 
   // Save state
   const [saved, setSaved] = useState(false);
   const [timerId, setTimerId] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    return () => { if (timerId) clearTimeout(timerId); };
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
   }, [timerId]);
 
-  function handleSave() {
+  async function handleSave() {
     if (timerId) clearTimeout(timerId);
-    setSaved(true);
-    const id = setTimeout(() => setSaved(false), 2500);
-    setTimerId(id);
+    try {
+      await saveSettings.mutateAsync({
+        customer_number_prefix: prefix.trim().toUpperCase() || "CUS",
+        customer_number_next_value: Math.max(1, nextValue),
+        default_credit_days: Math.max(0, Number(creditDays)),
+        default_currency: currency,
+        default_country: country,
+        customer_categories: categories,
+      });
+      setErrorMessage("");
+      setSaved(true);
+      const id = setTimeout(() => setSaved(false), 2500);
+      setTimerId(id);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to save CRM settings.");
+    }
   }
 
   function addCategory() {
@@ -134,6 +189,17 @@ export function CrmSettingsTab() {
 
   return (
     <div className="space-y-6">
+      {settingsQuery.isLoading && (
+        <p className="text-sm text-muted-foreground">Loading CRM settings…</p>
+      )}
+      {(settingsQuery.error || errorMessage) && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {errorMessage || (settingsQuery.error as Error).message}
+        </p>
+      )}
       {/* 1. Customer Number Format */}
       <SectionCard
         title="Customer Number Format"
@@ -164,7 +230,9 @@ export function CrmSettingsTab() {
           >
             Reset to 1
           </button>
-          <p className="text-xs text-muted-foreground">Customer codes must be unique — reset with caution.</p>
+          <p className="text-xs text-muted-foreground">
+            Customer codes must be unique — reset with caution.
+          </p>
         </div>
       </SectionCard>
 
@@ -179,14 +247,16 @@ export function CrmSettingsTab() {
         }
       >
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <Field label="Default Credit Days" description="Applied to all new customers unless overridden.">
-            <Select
-              value={creditDays}
-              onChange={setCreditDays}
-              options={CREDIT_DAYS_OPTIONS}
-            />
+          <Field
+            label="Default Credit Days"
+            description="Applied to all new customers unless overridden."
+          >
+            <Select value={creditDays} onChange={setCreditDays} options={CREDIT_DAYS_OPTIONS} />
           </Field>
-          <Field label="Preview" description="Credit term that will appear on new customer records.">
+          <Field
+            label="Preview"
+            description="Credit term that will appear on new customer records."
+          >
             <div className="flex h-9 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-foreground">
               {creditDays === "0" ? "Immediate payment" : `Net ${creditDays} days`}
             </div>
@@ -209,7 +279,9 @@ export function CrmSettingsTab() {
             <CategoryChip key={cat} label={cat} onRemove={() => removeCategory(cat)} />
           ))}
           {categories.length === 0 && (
-            <p className="text-xs text-muted-foreground italic">No categories defined. Add one below.</p>
+            <p className="text-xs text-muted-foreground italic">
+              No categories defined. Add one below.
+            </p>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -217,7 +289,12 @@ export function CrmSettingsTab() {
             type="text"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCategory();
+              }
+            }}
             placeholder="New category name…"
             className="h-9 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)] placeholder:text-slate-400"
           />
@@ -229,7 +306,9 @@ export function CrmSettingsTab() {
             <Plus className="h-4 w-4" /> Add
           </button>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Press Enter or click Add to create a new category. Click × to remove one.</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Press Enter or click Add to create a new category. Click × to remove one.
+        </p>
       </SectionCard>
 
       {/* 4. Regional Defaults */}
@@ -246,7 +325,10 @@ export function CrmSettingsTab() {
           <Field label="Default Currency" description="Currency used for pricing and invoicing.">
             <Select value={currency} onChange={setCurrency} options={CURRENCY_OPTIONS} />
           </Field>
-          <Field label="Default Country" description="Pre-filled country for new customer addresses.">
+          <Field
+            label="Default Country"
+            description="Pre-filled country for new customer addresses."
+          >
             <Select value={country} onChange={setCountry} options={COUNTRY_OPTIONS} />
           </Field>
         </div>
@@ -257,14 +339,12 @@ export function CrmSettingsTab() {
         <div>
           <SavedBanner visible={saved} />
           {!saved && (
-            <p className="text-xs text-muted-foreground">
-              Changes are stored for this session only and reset on page reload.
-            </p>
+            <p className="text-xs text-muted-foreground">Changes are stored for this business.</p>
           )}
         </div>
         <div className="ml-auto shrink-0">
           <PrimaryButton icon={ShieldCheck} onClick={handleSave}>
-            Save Settings
+            {saveSettings.isPending ? "Saving…" : "Save Settings"}
           </PrimaryButton>
         </div>
       </div>

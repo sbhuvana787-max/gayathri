@@ -1,43 +1,180 @@
 // ── Finance Overview Tab ─────────────────────────────────────────────
 import { motion } from "framer-motion";
 import {
-  TrendingUp, TrendingDown, DollarSign, Wallet, Landmark,
-  ReceiptText, CreditCard, BadgePercent, Plus, ArrowDownCircle,
-  ArrowRightLeft, FileBarChart2,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Wallet,
+  Landmark,
+  ReceiptText,
+  CreditCard,
+  BadgePercent,
+  Plus,
+  ArrowDownCircle,
+  ArrowRightLeft,
+  FileBarChart2,
 } from "lucide-react";
 import {
-  ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, AreaChart, Area,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  AreaChart,
+  Area,
 } from "recharts";
-import {
-  todayIncome, todayExpenses, todayNetProfit, cashBalance,
-  totalBankBalance, totalReceivables, totalPayables, currentMonthGST,
-  revenueTrend, expenseByCategory, cashFlowData, plData,
-  fmtINR,
-} from "@/lib/finance-data";
+import { fmtINR } from "@/lib/finance-data";
+import { useFinanceModel } from "@/hooks/useFinanceModel";
 import { SectionCard, StatTile } from "@/components/finance/shared";
 
-const PIE_COLORS = ["#6366f1","#f43f5e","#f59e0b","#10b981","#3b82f6","#8b5cf6","#ec4899","#14b8a6"];
+const PIE_COLORS = [
+  "#6366f1",
+  "#f43f5e",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+];
 
 export function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void }) {
+  const { model, isLoading, isError, error } = useFinanceModel();
+  const {
+    todayIncome,
+    todayExpenses,
+    todayNetProfit,
+    cashBalance,
+    totalBankBalance,
+    totalReceivables,
+    totalPayables,
+    currentMonthGST,
+    revenueTrend,
+    expenseByCategory,
+    cashFlowData,
+    plData,
+    bankAccounts,
+  } = model;
+  if (isLoading)
+    return (
+      <p className="rounded-xl border bg-white p-6 text-sm text-muted-foreground">
+        Loading finance data…
+      </p>
+    );
+  if (isError)
+    return (
+      <p
+        role="alert"
+        className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700"
+      >
+        Unable to load finance data: {(error as Error).message}
+      </p>
+    );
+  const todayLabel = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
   const kpiRow1 = [
-    { label: "Today's Revenue", value: fmtINR(todayIncome), icon: TrendingUp, bg: "bg-emerald-50", iconColor: "text-emerald-600", sub: "14 Jul 2025" },
-    { label: "Today's Expenses", value: fmtINR(todayExpenses), icon: TrendingDown, bg: "bg-red-50", iconColor: "text-red-500", sub: "14 Jul 2025" },
-    { label: "Net Profit Today", value: fmtINR(todayNetProfit), icon: DollarSign, bg: "bg-indigo-50", iconColor: "text-indigo-600", sub: "Revenue − Expenses" },
-    { label: "Cash Balance", value: fmtINR(cashBalance), icon: Wallet, bg: "bg-amber-50", iconColor: "text-amber-600", sub: "Closing cash" },
+    {
+      label: "Today's Collected",
+      value: fmtINR(todayIncome),
+      icon: TrendingUp,
+      bg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+      sub: todayLabel,
+    },
+    {
+      label: "Today's Expenses",
+      value: fmtINR(todayExpenses),
+      icon: TrendingDown,
+      bg: "bg-red-50",
+      iconColor: "text-red-500",
+      sub: todayLabel,
+    },
+    {
+      label: "Net Profit Today",
+      value: fmtINR(todayNetProfit),
+      icon: DollarSign,
+      bg: "bg-indigo-50",
+      iconColor: "text-indigo-600",
+      sub: "Revenue − Expenses",
+    },
+    {
+      label: "Cash Balance",
+      value: fmtINR(cashBalance),
+      icon: Wallet,
+      bg: "bg-amber-50",
+      iconColor: "text-amber-600",
+      sub: "Closing cash",
+    },
   ];
   const kpiRow2 = [
-    { label: "Bank Balance", value: fmtINR(totalBankBalance), icon: Landmark, bg: "bg-blue-50", iconColor: "text-blue-600", sub: "3 accounts" },
-    { label: "Receivables", value: fmtINR(totalReceivables), icon: ReceiptText, bg: "bg-violet-50", iconColor: "text-violet-600", sub: "Outstanding" },
-    { label: "Payables", value: fmtINR(totalPayables), icon: CreditCard, bg: "bg-orange-50", iconColor: "text-orange-500", sub: "Due to vendors" },
-    { label: "GST Collected", value: fmtINR(currentMonthGST.collectedGST), icon: BadgePercent, bg: "bg-teal-50", iconColor: "text-teal-600", sub: "July 2025" },
+    {
+      label: "Bank Balance",
+      value: fmtINR(totalBankBalance),
+      icon: Landmark,
+      bg: "bg-blue-50",
+      iconColor: "text-blue-600",
+      sub: `${bankAccounts.length} accounts`,
+    },
+    {
+      label: "Receivables",
+      value: fmtINR(totalReceivables),
+      icon: ReceiptText,
+      bg: "bg-violet-50",
+      iconColor: "text-violet-600",
+      sub: "Outstanding",
+    },
+    {
+      label: "Payables",
+      value: fmtINR(totalPayables),
+      icon: CreditCard,
+      bg: "bg-orange-50",
+      iconColor: "text-orange-500",
+      sub: "Due to vendors",
+    },
+    {
+      label: "GST Collected",
+      value: fmtINR(currentMonthGST.collectedGST),
+      icon: BadgePercent,
+      bg: "bg-teal-50",
+      iconColor: "text-teal-600",
+      sub: currentMonthGST.month,
+    },
   ];
 
   const quickActions = [
     { label: "Add Expense", icon: Plus, tab: "expenses", color: "text-red-500", bg: "bg-red-50" },
-    { label: "Record Income", icon: ArrowDownCircle, tab: "income", color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Transfer Money", icon: ArrowRightLeft, tab: "bank-accounts", color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "View Reports", icon: FileBarChart2, tab: "reports", color: "text-indigo-600", bg: "bg-indigo-50" },
+    {
+      label: "Record Income",
+      icon: ArrowDownCircle,
+      tab: "income",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
+    {
+      label: "Transfer Money",
+      icon: ArrowRightLeft,
+      tab: "bank-accounts",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "View Reports",
+      icon: FileBarChart2,
+      tab: "reports",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+    },
   ];
 
   return (
@@ -63,7 +200,10 @@ export function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void 
             <BarChart data={revenueTrend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`}
+              />
               <Tooltip formatter={(v: number) => fmtINR(v)} />
               <Legend />
               <Bar dataKey="revenue" name="Revenue" fill="#6366f1" radius={[4, 4, 0, 0]} />
@@ -95,7 +235,10 @@ export function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void 
           <div className="mt-2 flex flex-wrap gap-2 justify-center">
             {expenseByCategory.map((e, idx) => (
               <span key={e.name} className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="inline-block h-2 w-2 rounded-full" style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }} />
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: PIE_COLORS[idx % PIE_COLORS.length] }}
+                />
                 {e.name}
               </span>
             ))}
@@ -116,19 +259,32 @@ export function OverviewTab({ onNavigate }: { onNavigate: (tab: string) => void 
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`}
+              />
               <Tooltip formatter={(v: number) => fmtINR(v)} />
-              <Area type="monotone" dataKey="cashFlow" name="Cash Flow" stroke="#10b981" fill="url(#cashFlowGrad)" strokeWidth={2} />
+              <Area
+                type="monotone"
+                dataKey="cashFlow"
+                name="Cash Flow"
+                stroke="#10b981"
+                fill="url(#cashFlowGrad)"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </SectionCard>
 
-        <SectionCard title="Monthly Net Profit" subtitle="Jan–Jul 2025">
+        <SectionCard title="Monthly Net Cash Result" subtitle="Rolling 12 months · cash basis">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={plData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
+              <YAxis
+                tick={{ fontSize: 11 }}
+                tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`}
+              />
               <Tooltip formatter={(v: number) => fmtINR(v)} />
               <Bar dataKey="netProfit" name="Net Profit" fill="#10b981" radius={[4, 4, 0, 0]} />
             </BarChart>

@@ -45,20 +45,16 @@ import {
   Avatar,
 } from "@/components/crm/shared";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { useInvoices } from "@/hooks/useInvoicesQuery";
+import { invoiceBalance, invoiceGrandTotal } from "@/lib/billing-data";
+import { useCrmSettings } from "@/hooks/useCrmQuery";
 import {
   useCustomers,
   useCreateCustomer,
   useUpdateCustomer,
-  useDeleteCustomer,
-  useDeleteManyCustomers,
   useBulkUpdateCustomers,
 } from "@/hooks/useCustomersQuery";
-import {
-  generateCustomerCode,
-  type Customer,
-  type CustomerInsert,
-  type CustomerUpdate,
-} from "@/services/customers";
+import { type Customer, type CustomerInsert, type CustomerUpdate } from "@/services/customers";
 
 const PAGE_SIZE = 10;
 
@@ -112,16 +108,20 @@ function dbToUi(c: Customer): UiCustomer {
     creditLimit: c.credit_limit,
     creditDays: c.credit_days,
     totalRevenue: 0,
-    lastPurchase: c.updated_at?.slice(0, 10) ?? c.created_at?.slice(0, 10) ?? "",
+    lastPurchase: "",
     createdDate: c.created_at?.slice(0, 10) ?? "",
     rating: c.rating ?? 3,
   };
 }
 
-function formToInsert(businessId: string, form: CustomerFormData): CustomerInsert {
+function formToInsert(
+  businessId: string,
+  form: CustomerFormData,
+  country = "India",
+): CustomerInsert {
   return {
     business_id: businessId,
-    customer_code: generateCustomerCode(),
+    customer_code: "",
     name: form.name.trim(),
     company_name: form.company.trim() || null,
     contact_person: form.contactPerson.trim() || null,
@@ -133,7 +133,7 @@ function formToInsert(businessId: string, form: CustomerFormData): CustomerInser
     shipping_address: form.shippingAddress.trim() || null,
     city: form.city.trim() || null,
     state: form.state.trim() || null,
-    country: "India",
+    country,
     postal_code: null,
     credit_limit: form.creditLimit,
     credit_days: form.creditDays,
@@ -169,22 +169,47 @@ function formToUpdate(form: CustomerFormData): CustomerUpdate {
 
 function buildCSV(rows: UiCustomer[]): string {
   const headers = [
-    "Customer Code", "Name", "Company", "Contact Person", "GSTIN", "PAN",
-    "Phone", "Email", "City", "State", "Group", "Status",
-    "Outstanding Amount", "Credit Limit", "Credit Days", "Created Date",
+    "Customer Code",
+    "Name",
+    "Company",
+    "Contact Person",
+    "GSTIN",
+    "PAN",
+    "Phone",
+    "Email",
+    "City",
+    "State",
+    "Group",
+    "Status",
+    "Outstanding Amount",
+    "Credit Limit",
+    "Credit Days",
+    "Created Date",
   ];
-  const escape = (v: string | number | undefined) =>
-    `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const escape = (v: string | number | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   return [
     headers.join(","),
     ...rows.map((c) =>
       [
-        c.customerCode, c.name, c.company, c.contactPerson, c.gstin, c.pan,
-        c.phone, c.email, c.city, c.state, c.group, c.status,
-        c.outstandingAmount, c.creditLimit, c.creditDays, c.createdDate,
+        c.customerCode,
+        c.name,
+        c.company,
+        c.contactPerson,
+        c.gstin,
+        c.pan,
+        c.phone,
+        c.email,
+        c.city,
+        c.state,
+        c.group,
+        c.status,
+        c.outstandingAmount,
+        c.creditLimit,
+        c.creditDays,
+        c.createdDate,
       ]
         .map(escape)
-        .join(",")
+        .join(","),
     ),
   ].join("\n");
 }
@@ -201,8 +226,15 @@ function downloadFile(content: string, filename: string, mime: string) {
 
 // ── Form types ────────────────────────────────────────────────────
 
-const GROUPS: CustomerGroupName[] = ["Retail", "Wholesale", "Corporate", "VIP", "Distributor", "Dealer"];
-const STATUSES: CustomerStatus[] = ["active", "inactive", "new", "at-risk"];
+const GROUPS: CustomerGroupName[] = [
+  "Retail",
+  "Wholesale",
+  "Corporate",
+  "VIP",
+  "Distributor",
+  "Dealer",
+];
+const STATUSES: CustomerStatus[] = ["active", "inactive", "new", "at-risk", "archived"];
 
 type CustomerFormData = {
   name: string;
@@ -223,9 +255,21 @@ type CustomerFormData = {
 };
 
 const EMPTY_FORM: CustomerFormData = {
-  name: "", company: "", contactPerson: "", gstin: "", pan: "",
-  phone: "", email: "", city: "", state: "", billingAddress: "", shippingAddress: "",
-  group: "Retail", creditLimit: 50000, creditDays: 30, status: "new",
+  name: "",
+  company: "",
+  contactPerson: "",
+  gstin: "",
+  pan: "",
+  phone: "",
+  email: "",
+  city: "",
+  state: "",
+  billingAddress: "",
+  shippingAddress: "",
+  group: "Retail",
+  creditLimit: 50000,
+  creditDays: 30,
+  status: "new",
 };
 
 // ── CustomerForm ──────────────────────────────────────────────────
@@ -390,7 +434,9 @@ function CustomerForm({
                 disabled={saving}
               >
                 {GROUPS.map((g) => (
-                  <option key={g} value={g}>{g}</option>
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
                 ))}
               </select>
             </div>
@@ -403,7 +449,9 @@ function CustomerForm({
                 disabled={saving}
               >
                 {STATUSES.map((s) => (
-                  <option key={s} value={s}>{s.replace(/-/g, " ")}</option>
+                  <option key={s} value={s}>
+                    {s.replace(/-/g, " ")}
+                  </option>
                 ))}
               </select>
             </div>
@@ -571,7 +619,9 @@ function BulkEditModal({
           >
             <option value="">— No change —</option>
             {GROUPS.map((g) => (
-              <option key={g} value={g}>{g}</option>
+              <option key={g} value={g}>
+                {g}
+              </option>
             ))}
           </select>
         </div>
@@ -586,7 +636,9 @@ function BulkEditModal({
           >
             <option value="">— No change —</option>
             {STATUSES.map((s) => (
-              <option key={s} value={s}>{s.replace(/-/g, " ")}</option>
+              <option key={s} value={s}>
+                {s.replace(/-/g, " ")}
+              </option>
             ))}
           </select>
         </div>
@@ -614,15 +666,7 @@ function BulkEditModal({
 
 // ── Sort indicator ────────────────────────────────────────────────
 
-function SortIcon({
-  col,
-  current,
-  dir,
-}: {
-  col: string;
-  current: string;
-  dir: "asc" | "desc";
-}) {
+function SortIcon({ col, current, dir }: { col: string; current: string; dir: "asc" | "desc" }) {
   if (col !== current) return <ChevronUp className="h-3 w-3 opacity-20 ml-1" />;
   return dir === "asc" ? (
     <ChevronUp className="h-3 w-3 ml-1 text-[color:var(--brand-electric)]" />
@@ -638,7 +682,10 @@ function SkeletonRow() {
     <TableRow className="border-b border-slate-100">
       {Array.from({ length: 10 }).map((_, i) => (
         <TableCell key={i} className={i === 0 ? "pl-6" : i === 9 ? "pr-6" : ""}>
-          <div className="h-4 rounded bg-slate-100 animate-pulse" style={{ width: i === 1 ? "120px" : i === 9 ? "28px" : "80px" }} />
+          <div
+            className="h-4 rounded bg-slate-100 animate-pulse"
+            style={{ width: i === 1 ? "120px" : i === 9 ? "28px" : "80px" }}
+          />
         </TableCell>
       ))}
     </TableRow>
@@ -653,12 +700,35 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
 
   // ── Server state ──────────────────────────────────────────────
   const { data: dbCustomers = [], isLoading, error: loadError } = useCustomers(businessId);
-  const customers = useMemo(() => dbCustomers.map(dbToUi), [dbCustomers]);
+  const { data: crmSettings } = useCrmSettings(businessId);
+  const { data: invoices = [] } = useInvoices(businessId);
+  const customers = useMemo(
+    () =>
+      dbCustomers.map((row) => {
+        const customerInvoices = invoices.filter(
+          (invoice) =>
+            invoice.customerId === row.id &&
+            invoice.status !== "cancelled" &&
+            invoice.status !== "draft",
+        );
+        const totalRevenue = customerInvoices.reduce(
+          (sum, invoice) => sum + invoiceGrandTotal(invoice),
+          0,
+        );
+        const outstandingAmount =
+          Number(row.opening_balance) +
+          customerInvoices.reduce((sum, invoice) => sum + Math.max(0, invoiceBalance(invoice)), 0);
+        const lastPurchase = customerInvoices.reduce(
+          (latest, invoice) => (invoice.createdDate > latest ? invoice.createdDate : latest),
+          "",
+        );
+        return { ...dbToUi(row), totalRevenue, outstandingAmount, lastPurchase };
+      }),
+    [dbCustomers, invoices],
+  );
 
   const createMutation = useCreateCustomer(businessId);
   const updateMutation = useUpdateCustomer(businessId);
-  const deleteMutation = useDeleteCustomer(businessId);
-  const deleteManyMutation = useDeleteManyCustomers(businessId);
   const bulkUpdateMutation = useBulkUpdateCustomers(businessId);
 
   // ── Filters ───────────────────────────────────────────────────
@@ -684,6 +754,7 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   // ── Derived ───────────────────────────────────────────────────
   const cityOptions = useMemo(() => {
@@ -701,11 +772,13 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
           c.company.toLowerCase().includes(q) ||
           c.gstin.toLowerCase().includes(q) ||
           c.phone.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q)
+          c.email.toLowerCase().includes(q) ||
+          c.contactPerson.toLowerCase().includes(q),
       );
     }
     if (filterGroup !== "all") rows = rows.filter((c) => c.group === filterGroup);
-    if (filterStatus !== "all") rows = rows.filter((c) => c.status === filterStatus);
+    if (filterStatus === "all") rows = rows.filter((c) => c.status !== "archived");
+    else rows = rows.filter((c) => c.status === filterStatus);
     if (filterCity !== "all") rows = rows.filter((c) => c.city === filterCity);
 
     rows = [...rows].sort((a, b) => {
@@ -721,8 +794,7 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const allPageSelected =
-    pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id));
+  const allPageSelected = pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id));
 
   function toggleSort(key: typeof sortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -755,7 +827,9 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
     setFormError("");
     try {
       if (formMode === "create") {
-        await createMutation.mutateAsync(formToInsert(businessId, data));
+        await createMutation.mutateAsync(
+          formToInsert(businessId, data, crmSettings?.default_country),
+        );
       } else if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, payload: formToUpdate(data) });
       }
@@ -793,7 +867,13 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
   }
 
   async function handleDelete(id: string) {
-    await deleteMutation.mutateAsync(id);
+    try {
+      await updateMutation.mutateAsync({ id, payload: { status: "archived" } });
+      setActionError("");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to archive customer.");
+      return;
+    }
     setSelectedIds((prev) => {
       const s = new Set(prev);
       s.delete(id);
@@ -804,8 +884,15 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
 
   async function handleBulkDelete() {
     const ids = [...selectedIds];
-    await deleteManyMutation.mutateAsync(ids);
-    setSelectedIds(new Set());
+    try {
+      await bulkUpdateMutation.mutateAsync({ ids, payload: { status: "archived" } });
+      setSelectedIds(new Set());
+      setActionError("");
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Unable to archive selected customers.",
+      );
+    }
   }
 
   async function handleBulkEdit(group: CustomerGroupName | "", status: CustomerStatus | "") {
@@ -820,15 +907,13 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
   }
 
   function exportCSV() {
-    const rows =
-      selectedIds.size > 0 ? filtered.filter((c) => selectedIds.has(c.id)) : filtered;
+    const rows = selectedIds.size > 0 ? filtered.filter((c) => selectedIds.has(c.id)) : filtered;
     downloadFile(buildCSV(rows), "customers.csv", "text/csv");
   }
 
   function exportExcel() {
-    const rows =
-      selectedIds.size > 0 ? filtered.filter((c) => selectedIds.has(c.id)) : filtered;
-    downloadFile(buildCSV(rows), "customers.xls", "application/vnd.ms-excel");
+    const rows = selectedIds.size > 0 ? filtered.filter((c) => selectedIds.has(c.id)) : filtered;
+    downloadFile(buildCSV(rows), "customers-excel.csv", "text/csv;charset=utf-8");
   }
 
   const groupOptions = [
@@ -841,6 +926,7 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
     { value: "inactive", label: "Inactive" },
     { value: "new", label: "New" },
     { value: "at-risk", label: "At Risk" },
+    { value: "archived", label: "Archived" },
   ];
 
   const SortTh = ({ col, label }: { col: typeof sortKey; label: string }) => (
@@ -855,10 +941,7 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
     </TableHead>
   );
 
-  const isMutating =
-    deleteMutation.isPending ||
-    deleteManyMutation.isPending ||
-    bulkUpdateMutation.isPending;
+  const isMutating = updateMutation.isPending || bulkUpdateMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -867,33 +950,52 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            <strong>Failed to load customers.</strong>{" "}
-            {(loadError as Error).message}
+            <strong>Failed to load customers.</strong> {(loadError as Error).message}
           </span>
         </div>
+      )}
+      {actionError && (
+        <p
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {actionError}
+        </p>
       )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
         <SearchInput
           value={search}
-          onChange={(v) => { setSearch(v); setPage(1); }}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
           placeholder="Search name, company, GSTIN, phone, email..."
           className="w-64"
         />
         <Select
           value={filterGroup}
-          onChange={(v) => { setFilterGroup(v); setPage(1); }}
+          onChange={(v) => {
+            setFilterGroup(v);
+            setPage(1);
+          }}
           options={groupOptions}
         />
         <Select
           value={filterStatus}
-          onChange={(v) => { setFilterStatus(v); setPage(1); }}
+          onChange={(v) => {
+            setFilterStatus(v);
+            setPage(1);
+          }}
           options={statusOptions}
         />
         <Select
           value={filterCity}
-          onChange={(v) => { setFilterCity(v); setPage(1); }}
+          onChange={(v) => {
+            setFilterCity(v);
+            setPage(1);
+          }}
           options={cityOptions}
           className="max-w-[140px]"
         />
@@ -914,12 +1016,12 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
                 disabled={isMutating}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50"
               >
-                {deleteManyMutation.isPending ? (
+                {bulkUpdateMutation.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Trash2 className="h-3.5 w-3.5" />
                 )}
-                Delete
+                Archive
               </button>
               <button
                 onClick={() => setSelectedIds(new Set())}
@@ -929,12 +1031,19 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
               </button>
             </>
           )}
-          <SecondaryButton icon={Download} onClick={exportCSV}>CSV</SecondaryButton>
-          <SecondaryButton icon={Download} onClick={exportExcel}>Excel</SecondaryButton>
+          <SecondaryButton icon={Download} onClick={exportCSV}>
+            CSV
+          </SecondaryButton>
+          <SecondaryButton icon={Download} onClick={exportExcel}>
+            Excel
+          </SecondaryButton>
           <PrimaryButton
             icon={Plus}
             onClick={() => {
-              setFormInitial(EMPTY_FORM);
+              setFormInitial({
+                ...EMPTY_FORM,
+                creditDays: crmSettings?.default_credit_days ?? EMPTY_FORM.creditDays,
+              });
               setFormMode("create");
               setEditingId(null);
               setFormError("");
@@ -1017,7 +1126,8 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
                         onChange={(v) => {
                           setSelectedIds((prev) => {
                             const s = new Set(prev);
-                            v ? s.add(c.id) : s.delete(c.id);
+                            if (v) s.add(c.id);
+                            else s.delete(c.id);
                             return s;
                           });
                         }}
@@ -1040,7 +1150,9 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
                     <TableCell>
                       <span className="font-mono text-[11px] text-slate-600">{c.gstin || "—"}</span>
                     </TableCell>
-                    <TableCell className="text-xs text-foreground whitespace-nowrap">{c.phone}</TableCell>
+                    <TableCell className="text-xs text-foreground whitespace-nowrap">
+                      {c.phone}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{c.city || "—"}</TableCell>
                     <TableCell>
                       {c.outstandingAmount > 0 ? (
@@ -1076,7 +1188,7 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
                             onClick={() => setDeleteId(c.id)}
                           >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            <Trash2 className="mr-2 h-4 w-4" /> Archive
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1098,7 +1210,9 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
       {/* Add / Edit Modal */}
       <ModalShell
         open={formOpen}
-        onClose={() => { if (!saving) setFormOpen(false); }}
+        onClose={() => {
+          if (!saving) setFormOpen(false);
+        }}
         title={formMode === "create" ? "Add Customer" : "Edit Customer"}
         wide
       >
@@ -1108,7 +1222,9 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
           saving={saving}
           serverError={formError}
           onSave={handleSave}
-          onCancel={() => { if (!saving) setFormOpen(false); }}
+          onCancel={() => {
+            if (!saving) setFormOpen(false);
+          }}
         />
       </ModalShell>
 
@@ -1121,13 +1237,10 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
       />
 
       {/* Delete Confirm */}
-      <ModalShell
-        open={!!deleteId}
-        onClose={() => setDeleteId(null)}
-        title="Delete Customer"
-      >
+      <ModalShell open={!!deleteId} onClose={() => setDeleteId(null)} title="Archive Customer">
         <p className="text-sm text-muted-foreground mb-6">
-          Are you sure you want to delete this customer? This action cannot be undone.
+          Archive this customer? It will be hidden from active customer views and can be restored by
+          changing its status.
         </p>
         <div className="flex justify-end gap-2">
           <button
@@ -1138,17 +1251,17 @@ export function CustomersTab({ onViewCustomer }: { onViewCustomer: (id: string) 
           </button>
           <button
             onClick={() => deleteId && handleDelete(deleteId)}
-            disabled={deleteMutation.isPending}
+            disabled={updateMutation.isPending}
             className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {deleteMutation.isPending ? (
+            {updateMutation.isPending ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Deleting…
+                Archiving…
               </>
             ) : (
               <>
-                <Trash2 className="h-3.5 w-3.5" /> Delete
+                <Trash2 className="h-3.5 w-3.5" /> Archive
               </>
             )}
           </button>

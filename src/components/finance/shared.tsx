@@ -68,7 +68,9 @@ export function StatTile({
           <Icon className={`h-5 w-5 ${iconColor}`} />
         </div>
         {trend && (
-          <span className={`text-xs font-semibold ${trend.positive ? "text-emerald-600" : "text-red-500"}`}>
+          <span
+            className={`text-xs font-semibold ${trend.positive ? "text-emerald-600" : "text-red-500"}`}
+          >
             {trend.positive ? "↑" : "↓"} {trend.value}
           </span>
         )}
@@ -101,7 +103,9 @@ export function StatusPill({ status, label }: { status: string; label?: string }
   const cls = statusStyles[key] ?? "bg-slate-100 text-slate-600 border-slate-200";
   const text = label ?? status;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${cls}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${cls}`}
+    >
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {text}
     </span>
@@ -150,7 +154,9 @@ export function FilterSelect({
       className={`h-9 rounded-xl border border-slate-200 bg-white px-3 text-sm text-foreground outline-none transition-colors focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)] ${className}`}
     >
       {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
       ))}
     </select>
   );
@@ -168,7 +174,9 @@ export function Pagination({
   if (totalPages <= 1) return null;
   return (
     <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3">
-      <p className="text-xs text-muted-foreground">Page {page} of {totalPages}</p>
+      <p className="text-xs text-muted-foreground">
+        Page {page} of {totalPages}
+      </p>
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => onChange(Math.max(1, page - 1))}
@@ -195,18 +203,21 @@ export function PrimaryButton({
   icon: Icon,
   className = "",
   type = "button",
+  disabled = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
   icon?: React.ElementType;
   className?: string;
   type?: "button" | "submit";
+  disabled?: boolean;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-xl bg-[image:var(--gradient-brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 ${className}`}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-xl bg-[image:var(--gradient-brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-50 ${className}`}
     >
       {Icon && <Icon className="h-4 w-4" />}
       {children}
@@ -266,13 +277,23 @@ export function TableWrapper({ children }: { children: ReactNode }) {
 
 export function Th({ children, right }: { children: ReactNode; right?: boolean }) {
   return (
-    <th className={`border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground ${right ? "text-right" : "text-left"}`}>
+    <th
+      className={`border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground ${right ? "text-right" : "text-left"}`}
+    >
       {children}
     </th>
   );
 }
 
-export function Td({ children, right, className = "" }: { children: ReactNode; right?: boolean; className?: string }) {
+export function Td({
+  children,
+  right,
+  className = "",
+}: {
+  children: ReactNode;
+  right?: boolean;
+  className?: string;
+}) {
   return (
     <td className={`border-b border-slate-50 px-4 py-3 ${right ? "text-right" : ""} ${className}`}>
       {children}

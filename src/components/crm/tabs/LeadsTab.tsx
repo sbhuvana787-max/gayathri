@@ -21,8 +21,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  leads as seedLeads,
-  crmCustomers,
   fmtINR,
   fmtDate,
   LEAD_STATUS_LABELS,
@@ -31,8 +29,15 @@ import {
   type LeadStatus,
   type LeadSource,
   type LeadPriority,
-  type CrmCustomer,
 } from "@/lib/crm-data";
+import { useBusiness } from "@/contexts/BusinessContext";
+import {
+  useConvertCrmLead,
+  useCrmLeads,
+  useDeleteCrmLead,
+  useSaveCrmLead,
+} from "@/hooks/useCrmQuery";
+import type { CrmLead } from "@/services/crm";
 import {
   SectionCard,
   SearchInput,
@@ -49,8 +54,23 @@ import {
 
 const PAGE_SIZE = 10;
 
-function genId() {
-  return "lead-new-" + Math.random().toString(36).slice(2, 9);
+function fromDb(row: CrmLead): Lead {
+  return {
+    id: row.id,
+    leadCode: row.lead_code,
+    name: row.name,
+    company: row.company,
+    contactPerson: row.contact_person,
+    phone: row.phone,
+    email: row.email ?? "",
+    source: row.source as LeadSource,
+    status: row.status,
+    expectedRevenue: Number(row.expected_revenue),
+    assignedUser: row.assigned_user,
+    priority: row.priority,
+    createdDate: row.created_at.slice(0, 10),
+    convertedCustomerId: row.converted_customer_id ?? undefined,
+  };
 }
 
 type SortKey = "name" | "expectedRevenue" | "createdDate" | "status" | "priority";
@@ -69,7 +89,13 @@ const EMPTY_FORM = {
   priority: "medium" as LeadPriority,
 };
 
-const ASSIGNED_USERS = ["Arjun Mehta", "Divya Krishnan", "Rohan Verma", "Sneha Patel", "Karan Malhotra"];
+const ASSIGNED_USERS = [
+  "Arjun Mehta",
+  "Divya Krishnan",
+  "Rohan Verma",
+  "Sneha Patel",
+  "Karan Malhotra",
+];
 
 function LeadForm({
   initial,
@@ -100,12 +126,17 @@ function LeadForm({
   function handleSubmit(ev: React.FormEvent) {
     ev.preventDefault();
     const e = validate();
-    if (Object.keys(e).length) { setErrors(e); return; }
+    if (Object.keys(e).length) {
+      setErrors(e);
+      return;
+    }
     onSave(form);
   }
 
-  const inputCls = "h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)] placeholder:text-slate-400";
-  const selectCls = "h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-foreground outline-none transition-colors focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)]";
+  const inputCls =
+    "h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)] placeholder:text-slate-400";
+  const selectCls =
+    "h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-foreground outline-none transition-colors focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)]";
   const labelCls = "mb-1 block text-xs font-medium text-foreground";
   const errCls = "mt-0.5 text-[11px] text-red-500";
 
@@ -114,49 +145,97 @@ function LeadForm({
       <div className="grid grid-cols-2 gap-x-4 gap-y-3">
         <div className="col-span-2">
           <label className={labelCls}>Lead Name *</label>
-          <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Riya Patel" className={inputCls} />
+          <input
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+            placeholder="e.g. Riya Patel"
+            className={inputCls}
+          />
           {errors.name && <p className={errCls}>{errors.name}</p>}
         </div>
         <div>
           <label className={labelCls}>Company *</label>
-          <input value={form.company} onChange={(e) => set("company", e.target.value)} placeholder="e.g. Metro Traders" className={inputCls} />
+          <input
+            value={form.company}
+            onChange={(e) => set("company", e.target.value)}
+            placeholder="e.g. Metro Traders"
+            className={inputCls}
+          />
           {errors.company && <p className={errCls}>{errors.company}</p>}
         </div>
         <div>
           <label className={labelCls}>Contact Person</label>
-          <input value={form.contactPerson} onChange={(e) => set("contactPerson", e.target.value)} placeholder="e.g. Riya Patel" className={inputCls} />
+          <input
+            value={form.contactPerson}
+            onChange={(e) => set("contactPerson", e.target.value)}
+            placeholder="e.g. Riya Patel"
+            className={inputCls}
+          />
         </div>
         <div>
           <label className={labelCls}>Phone</label>
-          <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+91 98765 43210" className={inputCls} />
+          <input
+            value={form.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="+91 98765 43210"
+            className={inputCls}
+          />
         </div>
         <div>
           <label className={labelCls}>Email</label>
-          <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="riya@example.com" className={inputCls} />
+          <input
+            type="email"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+            placeholder="riya@example.com"
+            className={inputCls}
+          />
         </div>
         <div>
           <label className={labelCls}>Source</label>
-          <select value={form.source} onChange={(e) => set("source", e.target.value as LeadSource)} className={selectCls}>
+          <select
+            value={form.source}
+            onChange={(e) => set("source", e.target.value as LeadSource)}
+            className={selectCls}
+          >
             {(Object.keys(LEAD_SOURCE_LABELS) as LeadSource[]).map((s) => (
-              <option key={s} value={s}>{LEAD_SOURCE_LABELS[s]}</option>
+              <option key={s} value={s}>
+                {LEAD_SOURCE_LABELS[s]}
+              </option>
             ))}
           </select>
         </div>
         <div>
           <label className={labelCls}>Status</label>
-          <select value={form.status} onChange={(e) => set("status", e.target.value as LeadStatus)} className={selectCls}>
+          <select
+            value={form.status}
+            onChange={(e) => set("status", e.target.value as LeadStatus)}
+            className={selectCls}
+          >
             {(Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((s) => (
-              <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+              <option key={s} value={s}>
+                {LEAD_STATUS_LABELS[s]}
+              </option>
             ))}
           </select>
         </div>
         <div>
           <label className={labelCls}>Expected Revenue (₹)</label>
-          <input type="number" min={0} value={form.expectedRevenue} onChange={(e) => set("expectedRevenue", Number(e.target.value))} className={inputCls} />
+          <input
+            type="number"
+            min={0}
+            value={form.expectedRevenue}
+            onChange={(e) => set("expectedRevenue", Number(e.target.value))}
+            className={inputCls}
+          />
         </div>
         <div>
           <label className={labelCls}>Priority</label>
-          <select value={form.priority} onChange={(e) => set("priority", e.target.value as LeadPriority)} className={selectCls}>
+          <select
+            value={form.priority}
+            onChange={(e) => set("priority", e.target.value as LeadPriority)}
+            className={selectCls}
+          >
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
@@ -164,16 +243,31 @@ function LeadForm({
         </div>
         <div>
           <label className={labelCls}>Assigned User</label>
-          <select value={form.assignedUser} onChange={(e) => set("assignedUser", e.target.value)} className={selectCls}>
-            {ASSIGNED_USERS.map((u) => <option key={u} value={u}>{u}</option>)}
+          <select
+            value={form.assignedUser}
+            onChange={(e) => set("assignedUser", e.target.value)}
+            className={selectCls}
+          >
+            {ASSIGNED_USERS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
           </select>
         </div>
       </div>
       <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
-        <button type="button" onClick={onCancel} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-50 transition-colors">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-50 transition-colors"
+        >
           Cancel
         </button>
-        <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-[image:var(--gradient-brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+        <button
+          type="submit"
+          className="inline-flex items-center gap-2 rounded-xl bg-[image:var(--gradient-brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+        >
           {isEdit ? "Save Changes" : "Add Lead"}
         </button>
       </div>
@@ -182,15 +276,41 @@ function LeadForm({
 }
 
 function buildCSV(rows: Lead[]): string {
-  const headers = ["Lead Code", "Name", "Company", "Contact Person", "Phone", "Email", "Source", "Status", "Expected Revenue", "Assigned User", "Priority", "Created Date"];
+  const headers = [
+    "Lead Code",
+    "Name",
+    "Company",
+    "Contact Person",
+    "Phone",
+    "Email",
+    "Source",
+    "Status",
+    "Expected Revenue",
+    "Assigned User",
+    "Priority",
+    "Created Date",
+  ];
   const escape = (v: string | number | undefined) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   return [
     headers.join(","),
-    ...rows.map((l) => [
-      l.leadCode, l.name, l.company, l.contactPerson, l.phone, l.email,
-      LEAD_SOURCE_LABELS[l.source], LEAD_STATUS_LABELS[l.status],
-      l.expectedRevenue, l.assignedUser, l.priority, l.createdDate,
-    ].map(escape).join(",")),
+    ...rows.map((l) =>
+      [
+        l.leadCode,
+        l.name,
+        l.company,
+        l.contactPerson,
+        l.phone,
+        l.email,
+        LEAD_SOURCE_LABELS[l.source],
+        LEAD_STATUS_LABELS[l.status],
+        l.expectedRevenue,
+        l.assignedUser,
+        l.priority,
+        l.createdDate,
+      ]
+        .map(escape)
+        .join(","),
+    ),
   ].join("\n");
 }
 
@@ -198,18 +318,30 @@ function downloadFile(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
+  a.href = url;
+  a.download = filename;
+  a.click();
   URL.revokeObjectURL(url);
 }
 
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
   if (col !== sortKey) return <ChevronsUpDown className="h-3 w-3 text-slate-400" />;
-  return sortDir === "asc" ? <ChevronUp className="h-3 w-3 text-blue-600" /> : <ChevronDown className="h-3 w-3 text-blue-600" />;
+  return sortDir === "asc" ? (
+    <ChevronUp className="h-3 w-3 text-blue-600" />
+  ) : (
+    <ChevronDown className="h-3 w-3 text-blue-600" />
+  );
 }
 
 export function LeadsTab() {
-  const [localLeads, setLocalLeads] = useState<Lead[]>(() => seedLeads.map((l) => ({ ...l })));
-  const [convertedCustomers, setConvertedCustomers] = useState<CrmCustomer[]>([]);
+  const { business } = useBusiness();
+  const businessId = business?.id ?? null;
+  const leadsQuery = useCrmLeads(businessId);
+  const saveLead = useSaveCrmLead(businessId);
+  const deleteLead = useDeleteCrmLead(businessId);
+  const convertLead = useConvertCrmLead(businessId);
+  const localLeads = (leadsQuery.data ?? []).map(fromDb);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Filters
   const [search, setSearch] = useState("");
@@ -229,7 +361,10 @@ export function LeadsTab() {
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(key); setSortDir("asc"); }
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
     setPage(1);
   }
 
@@ -237,7 +372,14 @@ export function LeadsTab() {
     let rows = [...localLeads];
     if (search.trim()) {
       const q = search.toLowerCase();
-      rows = rows.filter((l) => l.name.toLowerCase().includes(q) || l.company.toLowerCase().includes(q) || l.email.toLowerCase().includes(q));
+      rows = rows.filter(
+        (l) =>
+          l.name.toLowerCase().includes(q) ||
+          l.company.toLowerCase().includes(q) ||
+          l.email.toLowerCase().includes(q) ||
+          l.phone.toLowerCase().includes(q) ||
+          l.contactPerson.toLowerCase().includes(q),
+      );
     }
     if (filterStatus !== "all") rows = rows.filter((l) => l.status === filterStatus);
     if (filterSource !== "all") rows = rows.filter((l) => l.source === filterSource);
@@ -285,64 +427,64 @@ export function LeadsTab() {
     setFormOpen(true);
   }
 
-  function handleSave(data: typeof EMPTY_FORM) {
-    if (formMode === "create") {
-      const newLead: Lead = {
-        id: genId(),
-        leadCode: `LEAD-NEW-${Math.floor(Math.random() * 9000) + 1000}`,
-        createdDate: new Date("2026-07-13").toISOString().slice(0, 10),
-        ...data,
-      };
-      setLocalLeads((prev) => [newLead, ...prev]);
-    } else if (editingId) {
-      setLocalLeads((prev) => prev.map((l) => l.id === editingId ? { ...l, ...data } : l));
+  async function handleSave(data: typeof EMPTY_FORM) {
+    if (!businessId) return setErrorMessage("Your business account is not available.");
+    try {
+      setErrorMessage("");
+      await saveLead.mutateAsync({
+        id: formMode === "edit" ? (editingId ?? undefined) : undefined,
+        payload: {
+          name: data.name,
+          company: data.company,
+          contact_person: data.contactPerson,
+          phone: data.phone,
+          email: data.email || null,
+          source: data.source,
+          status: data.status,
+          expected_revenue: data.expectedRevenue,
+          assigned_user: data.assignedUser,
+          priority: data.priority,
+        },
+      });
+      setFormOpen(false);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to save lead.");
     }
-    setFormOpen(false);
   }
 
-  function handleDelete(id: string) {
-    setLocalLeads((prev) => prev.filter((l) => l.id !== id));
-    setDeleteId(null);
+  async function handleDelete(id: string) {
+    try {
+      await deleteLead.mutateAsync(id);
+      setErrorMessage("");
+      setDeleteId(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to delete lead.");
+    }
   }
 
-  function handleConvert(lead: Lead) {
-    const newCustomer: CrmCustomer = {
-      id: "cust-conv-" + lead.id,
-      customerCode: `CUS-CONV-${Math.floor(Math.random() * 9000) + 1000}`,
-      name: lead.name,
-      company: lead.company,
-      contactPerson: lead.contactPerson,
-      gstin: "",
-      pan: "",
-      phone: lead.phone,
-      email: lead.email,
-      city: "",
-      state: "",
-      billingAddress: "",
-      shippingAddress: "",
-      group: "Retail",
-      status: "new",
-      outstandingAmount: 0,
-      creditLimit: 100000,
-      creditDays: 30,
-      totalRevenue: 0,
-      lastPurchase: new Date("2026-07-13").toISOString().slice(0, 10),
-      createdDate: new Date("2026-07-13").toISOString().slice(0, 10),
-      rating: 3,
-      notes: [],
-      purchaseHistory: [],
-    };
-    setConvertedCustomers((prev) => [...prev, newCustomer]);
-    setLocalLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, status: "won" as LeadStatus, convertedCustomerId: newCustomer.id } : l));
+  async function handleConvert(lead: Lead) {
+    if (!businessId) return setErrorMessage("Your business account is not available.");
+    try {
+      await convertLead.mutateAsync(lead.id);
+      setErrorMessage("");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to convert lead.");
+    }
   }
 
   const statusOptions = [
     { value: "all", label: "All Status" },
-    ...( Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((s) => ({ value: s, label: LEAD_STATUS_LABELS[s] })),
+    ...(Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((s) => ({
+      value: s,
+      label: LEAD_STATUS_LABELS[s],
+    })),
   ];
   const sourceOptions = [
     { value: "all", label: "All Sources" },
-    ...(Object.keys(LEAD_SOURCE_LABELS) as LeadSource[]).map((s) => ({ value: s, label: LEAD_SOURCE_LABELS[s] })),
+    ...(Object.keys(LEAD_SOURCE_LABELS) as LeadSource[]).map((s) => ({
+      value: s,
+      label: LEAD_SOURCE_LABELS[s],
+    })),
   ];
   const priorityOptions = [
     { value: "all", label: "All Priority" },
@@ -355,12 +497,54 @@ export function LeadsTab() {
 
   return (
     <div className="space-y-6">
+      {errorMessage && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {errorMessage}
+        </p>
+      )}
+      {leadsQuery.isLoading && <p className="text-sm text-muted-foreground">Loading leads…</p>}
+      {leadsQuery.error && (
+        <p role="alert" className="text-sm text-red-700">
+          Could not load leads: {(leadsQuery.error as Error).message}
+        </p>
+      )}
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search leads…" />
-        <Select value={filterStatus} onChange={(v) => { setFilterStatus(v); setPage(1); }} options={statusOptions} />
-        <Select value={filterSource} onChange={(v) => { setFilterSource(v); setPage(1); }} options={sourceOptions} />
-        <Select value={filterPriority} onChange={(v) => { setFilterPriority(v); setPage(1); }} options={priorityOptions} />
+        <SearchInput
+          value={search}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          placeholder="Search leads…"
+        />
+        <Select
+          value={filterStatus}
+          onChange={(v) => {
+            setFilterStatus(v);
+            setPage(1);
+          }}
+          options={statusOptions}
+        />
+        <Select
+          value={filterSource}
+          onChange={(v) => {
+            setFilterSource(v);
+            setPage(1);
+          }}
+          options={sourceOptions}
+        />
+        <Select
+          value={filterPriority}
+          onChange={(v) => {
+            setFilterPriority(v);
+            setPage(1);
+          }}
+          options={priorityOptions}
+        />
         <div className="ml-auto flex items-center gap-2">
           <SecondaryButton
             icon={Download}
@@ -368,18 +552,33 @@ export function LeadsTab() {
           >
             Export CSV
           </SecondaryButton>
-          <PrimaryButton icon={Plus} onClick={openCreate}>Add Lead</PrimaryButton>
+          <PrimaryButton icon={Plus} onClick={openCreate}>
+            Add Lead
+          </PrimaryButton>
         </div>
       </div>
 
       {/* Summary chips */}
       <div className="flex flex-wrap gap-3 text-xs">
-        {(["new", "contacted", "qualified", "proposal", "negotiation", "won", "lost"] as LeadStatus[]).map((s) => {
+        {(
+          [
+            "new",
+            "contacted",
+            "qualified",
+            "proposal",
+            "negotiation",
+            "won",
+            "lost",
+          ] as LeadStatus[]
+        ).map((s) => {
           const count = localLeads.filter((l) => l.status === s).length;
           return (
             <button
               key={s}
-              onClick={() => { setFilterStatus(filterStatus === s ? "all" : s); setPage(1); }}
+              onClick={() => {
+                setFilterStatus(filterStatus === s ? "all" : s);
+                setPage(1);
+              }}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-semibold transition-colors ${filterStatus === s ? "bg-[image:var(--gradient-brand)] text-white border-transparent" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
             >
               {LEAD_STATUS_LABELS[s]} <span className="opacity-70">{count}</span>
@@ -395,20 +594,32 @@ export function LeadsTab() {
             <TableHeader>
               <TableRow className="bg-slate-50/60">
                 <TableHead className={thCls} onClick={() => handleSort("name")}>
-                  <span className="inline-flex items-center gap-1">Lead Name <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} /></span>
+                  <span className="inline-flex items-center gap-1">
+                    Lead Name <SortIcon col="name" sortKey={sortKey} sortDir={sortDir} />
+                  </span>
                 </TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Phone / Email</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead className={thCls} onClick={() => handleSort("status")}>
-                  <span className="inline-flex items-center gap-1">Status <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} /></span>
+                  <span className="inline-flex items-center gap-1">
+                    Status <SortIcon col="status" sortKey={sortKey} sortDir={sortDir} />
+                  </span>
                 </TableHead>
-                <TableHead className={`${thCls} text-right`} onClick={() => handleSort("expectedRevenue")}>
-                  <span className="inline-flex items-center justify-end gap-1">Expected Rev <SortIcon col="expectedRevenue" sortKey={sortKey} sortDir={sortDir} /></span>
+                <TableHead
+                  className={`${thCls} text-right`}
+                  onClick={() => handleSort("expectedRevenue")}
+                >
+                  <span className="inline-flex items-center justify-end gap-1">
+                    Expected Rev{" "}
+                    <SortIcon col="expectedRevenue" sortKey={sortKey} sortDir={sortDir} />
+                  </span>
                 </TableHead>
                 <TableHead>Assigned</TableHead>
                 <TableHead className={thCls} onClick={() => handleSort("priority")}>
-                  <span className="inline-flex items-center gap-1">Priority <SortIcon col="priority" sortKey={sortKey} sortDir={sortDir} /></span>
+                  <span className="inline-flex items-center gap-1">
+                    Priority <SortIcon col="priority" sortKey={sortKey} sortDir={sortDir} />
+                  </span>
                 </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -417,7 +628,11 @@ export function LeadsTab() {
               {pageRows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={9}>
-                    <EmptyState icon={Search} title="No leads found" subtitle="Try adjusting your search or filters." />
+                    <EmptyState
+                      icon={Search}
+                      title="No leads found"
+                      subtitle="Try adjusting your search or filters."
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -444,10 +659,14 @@ export function LeadsTab() {
                   </TableCell>
                   <TableCell>
                     <p className="text-xs text-foreground">{lead.phone}</p>
-                    <p className="text-xs text-muted-foreground truncate max-w-[160px]">{lead.email}</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[160px]">
+                      {lead.email}
+                    </p>
                   </TableCell>
                   <TableCell>
-                    <span className="text-xs text-muted-foreground">{LEAD_SOURCE_LABELS[lead.source]}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {LEAD_SOURCE_LABELS[lead.source]}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <CrmStatusPill status={lead.status} label={LEAD_STATUS_LABELS[lead.status]} />
@@ -463,7 +682,7 @@ export function LeadsTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {lead.status !== "won" && (
+                      {!lead.convertedCustomerId && lead.status !== "lost" && (
                         <button
                           onClick={() => handleConvert(lead)}
                           title="Convert to Customer"
@@ -497,15 +716,30 @@ export function LeadsTab() {
       </SectionCard>
 
       {/* Create/Edit Modal */}
-      <ModalShell open={formOpen} onClose={() => setFormOpen(false)} title={formMode === "create" ? "Add New Lead" : "Edit Lead"} wide>
-        <LeadForm initial={formInitial} isEdit={formMode === "edit"} onSave={handleSave} onCancel={() => setFormOpen(false)} />
+      <ModalShell
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title={formMode === "create" ? "Add New Lead" : "Edit Lead"}
+        wide
+      >
+        <LeadForm
+          initial={formInitial}
+          isEdit={formMode === "edit"}
+          onSave={handleSave}
+          onCancel={() => setFormOpen(false)}
+        />
       </ModalShell>
 
       {/* Delete Confirm Modal */}
       <ModalShell open={deleteId !== null} onClose={() => setDeleteId(null)} title="Delete Lead">
-        <p className="text-sm text-foreground mb-6">Are you sure you want to delete this lead? This action cannot be undone.</p>
+        <p className="text-sm text-foreground mb-6">
+          Are you sure you want to delete this lead? This action cannot be undone.
+        </p>
         <div className="flex justify-end gap-2">
-          <button onClick={() => setDeleteId(null)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-50 transition-colors">
+          <button
+            onClick={() => setDeleteId(null)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-50 transition-colors"
+          >
             Cancel
           </button>
           <button
