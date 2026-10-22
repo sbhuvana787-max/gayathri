@@ -15,13 +15,23 @@ const themeOptions = [
 ];
 
 export function ReportSettingsTab() {
-  const [defaultDateRange, setDefaultDateRange] = useState<DateRangeId>(defaultReportSettings.defaultDateRange);
-  const [currency, setCurrency] = useState(defaultReportSettings.currency);
-  const [showTax, setShowTax] = useState(defaultReportSettings.showTaxInReports);
-  const [theme, setTheme] = useState<"light" | "dark">(defaultReportSettings.theme);
+  const [defaultDateRange, setDefaultDateRange] = useState<DateRangeId>(
+    () => readSettings().defaultDateRange,
+  );
+  const [currency, setCurrency] = useState(() => readSettings().currency);
+  const [showTax, setShowTax] = useState(() => readSettings().showTaxInReports);
+  const [theme, setTheme] = useState<"light" | "dark">(() => readSettings().theme);
   const [saved, setSaved] = useState(false);
 
   function handleSave() {
+    try {
+      localStorage.setItem(
+        "nexora:report-settings",
+        JSON.stringify({ defaultDateRange, currency, showTaxInReports: showTax, theme }),
+      );
+    } catch {
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -30,7 +40,9 @@ export function ReportSettingsTab() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-foreground">Report Settings</h2>
-        <p className="text-sm text-muted-foreground mt-1">Configure defaults applied across every report in this module.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Configure defaults applied across every report in this module.
+        </p>
       </div>
 
       {saved && (
@@ -42,16 +54,37 @@ export function ReportSettingsTab() {
       <SectionCard title="Defaults" subtitle="Applied when opening any report">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Default Date Range</label>
-            <Select value={defaultDateRange} onChange={(v) => setDefaultDateRange(v as DateRangeId)} options={dateRangeOptions} className="w-full" />
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              Default Date Range
+            </label>
+            <Select
+              value={defaultDateRange}
+              onChange={(v) => setDefaultDateRange(v as DateRangeId)}
+              options={dateRangeOptions}
+              className="w-full"
+            />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Currency</label>
-            <Select value={currency} onChange={setCurrency} options={currencyOptions} className="w-full" />
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              Currency
+            </label>
+            <Select
+              value={currency}
+              onChange={setCurrency}
+              options={currencyOptions}
+              className="w-full"
+            />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Report Theme</label>
-            <Select value={theme} onChange={(v) => setTheme(v as "light" | "dark")} options={themeOptions} className="w-full" />
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              Report Theme
+            </label>
+            <Select
+              value={theme}
+              onChange={(v) => setTheme(v as "light" | "dark")}
+              options={themeOptions}
+              className="w-full"
+            />
           </div>
           <div className="flex items-end">
             <label className="flex items-center gap-2.5 text-sm font-medium text-foreground cursor-pointer select-none">
@@ -70,4 +103,14 @@ export function ReportSettingsTab() {
       <PrimaryButton onClick={handleSave}>Save Settings</PrimaryButton>
     </div>
   );
+}
+
+function readSettings() {
+  if (typeof window === "undefined") return defaultReportSettings;
+  try {
+    const saved = localStorage.getItem("nexora:report-settings");
+    return saved ? { ...defaultReportSettings, ...JSON.parse(saved) } : defaultReportSettings;
+  } catch {
+    return defaultReportSettings;
+  }
 }

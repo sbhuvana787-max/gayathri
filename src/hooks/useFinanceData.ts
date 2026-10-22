@@ -99,6 +99,33 @@ export function useFinanceData() {
       await invalidate();
       await queryClient.invalidateQueries({ queryKey: ["payments", businessId] });
       await queryClient.invalidateQueries({ queryKey: ["invoices", businessId] });
+      await queryClient.invalidateQueries({ queryKey: ["reports", businessId] });
+    },
+  });
+  const saveBusinessPreferences = useMutation({
+    mutationFn: ({
+      currency,
+      financialYearStartMonth,
+      decimalPrecision,
+      financialYear,
+    }: {
+      currency: string;
+      financialYearStartMonth: number;
+      decimalPrecision: number;
+      financialYear: string;
+    }) =>
+      financeService.saveBusinessPreferences(
+        businessId!,
+        currency,
+        financialYearStartMonth,
+        decimalPrecision,
+        financialYear,
+      ),
+    onSuccess: async () => {
+      await invalidate();
+      if (business?.owner_id) {
+        await queryClient.invalidateQueries({ queryKey: ["business", business.owner_id] });
+      }
     },
   });
   const createTransfer = useMutation({
@@ -138,6 +165,7 @@ export function useFinanceData() {
     saveSettings,
     recordBillPayment,
     recordInvoicePayment,
+    saveBusinessPreferences,
     createTransfer,
   };
 }

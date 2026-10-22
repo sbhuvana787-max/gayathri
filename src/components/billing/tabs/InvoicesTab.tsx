@@ -1,5 +1,5 @@
 // ── Invoices Tab ──────────────────────────────────────────────────
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -26,11 +26,14 @@ import {
   invoiceGrandTotal,
   computeDocumentTotals,
   type Invoice,
-  type InvoiceStatus,
-  type PaymentStatus,
 } from "@/lib/billing-data";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from "@/hooks/useInvoicesQuery";
+import {
+  useInvoices,
+  useCreateInvoice,
+  useUpdateInvoice,
+  useDeleteInvoice,
+} from "@/hooks/useInvoicesQuery";
 import { useCustomers } from "@/hooks/useCustomersQuery";
 import { useProducts } from "@/hooks/useProductsQuery";
 import {
@@ -47,6 +50,8 @@ import {
 } from "@/components/billing/shared";
 import { InvoiceBuilder } from "@/components/billing/tabs/InvoiceBuilder";
 import { InvoiceDetailView } from "@/components/billing/tabs/InvoiceDetailView";
+import { useCreatePayment } from "@/hooks/usePaymentsQuery";
+import { toast } from "sonner";
 
 // ── Constants ─────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
@@ -86,7 +91,7 @@ function nextInvoiceNumberLocal(invs: Invoice[]): string {
 
 function buildCSV(
   rows: Invoice[],
-  resolveCustomer: (id: string) => { name: string; gstin: string } | undefined
+  resolveCustomer: (id: string) => { name: string; gstin: string } | undefined,
 ): string {
   const headers = [
     "Invoice Number",
@@ -167,22 +172,26 @@ export function InvoicesTab() {
   const { data: dbProducts = [] } = useProducts(businessId);
 
   // Resolve a customer ID → display info from DB
-  const resolveCustomer = (customerId: string) => {
-    const found = dbCustomers.find((c) => c.id === customerId);
-    if (found) {
-      return {
-        name: found.name,
-        gstin: found.gst_number ?? "",
-        contactPerson: found.contact_person ?? "",
-      };
-    }
-    return undefined;
-  };
+  const resolveCustomer = useCallback(
+    (customerId: string) => {
+      const found = dbCustomers.find((c) => c.id === customerId);
+      if (found) {
+        return {
+          name: found.name,
+          gstin: found.gst_number ?? "",
+          contactPerson: found.contact_person ?? "",
+        };
+      }
+      return undefined;
+    },
+    [dbCustomers],
+  );
 
   // Mutations
   const createInvoiceMutation = useCreateInvoice(businessId);
   const updateInvoiceMutation = useUpdateInvoice(businessId);
   const deleteInvoiceMutation = useDeleteInvoice(businessId);
+  const createPaymentMutation = useCreatePayment(businessId);
 
   // ── State ──────────────────────────────────────────────────────
   type ViewState = "list" | "create" | "edit" | "view";
@@ -327,6 +336,7 @@ export function InvoicesTab() {
     advAmountMin,
     advAmountMax,
     advSalesperson,
+    resolveCustomer,
   ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -435,13 +445,21 @@ export function InvoicesTab() {
   function handleExportCSV() {
     const selected =
       selectedIds.size > 0 ? filtered.filter((i) => selectedIds.has(i.id)) : filtered;
-    downloadFile(buildCSV(selected, resolveCustomer), "invoices-export.csv", "text/csv;charset=utf-8;");
+    downloadFile(
+      buildCSV(selected, resolveCustomer),
+      "invoices-export.csv",
+      "text/csv;charset=utf-8;",
+    );
   }
 
   function handleExportExcel() {
     const selected =
       selectedIds.size > 0 ? filtered.filter((i) => selectedIds.has(i.id)) : filtered;
-    downloadFile(buildCSV(selected, resolveCustomer), "invoices-export.xls", "application/vnd.ms-excel");
+    downloadFile(
+      buildCSV(selected, resolveCustomer),
+      "invoices-export.xls",
+      "application/vnd.ms-excel",
+    );
   }
 
   function handleBulkPrint() {
@@ -454,22 +472,54 @@ export function InvoicesTab() {
     );
   }
 
-  function handleBulkMarkPaid() {
-    localInvoices
-      .filter((inv) => selectedIds.has(inv.id))
-      .forEach((inv) => {
-        const totals = computeDocumentTotals(inv.items, inv.isInterState);
-        updateInvoiceMutation.mutate({
-          id: inv.id,
-          invoice: {
-            ...inv,
-            status: "paid" as InvoiceStatus,
-            paymentStatus: "paid" as PaymentStatus,
-            amountPaid: totals.grandTotal,
-          },
+  async function handleBulkMarkPaid() {
+    const selected = localInvoices
+      .filter(
+        (inv) => selectedIds.has(inv.id) && ["sent", "partial", "overdue"].includes(inv.status),
+      )
+      .map((invoice) => ({
+        invoice,
+        outstanding:
+          Math.round(
+            (computeDocumentTotals(invoice.items, invoice.isInterState).grandTotal -
+              invoice.amountPaid) *
+              100,
+          ) / 100,
+      }))
+      .filter(({ outstanding }) => outstanding > 0);
+    const date = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: business?.timezone || "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const results = await Promise.allSettled(
+      selected.map(({ invoice: inv, outstanding }) => {
+        return createPaymentMutation.mutateAsync({
+          invoiceId: inv.id,
+          customerId: inv.customerId,
+          amount: outstanding,
+          mode: inv.paymentMode,
+          date,
+          currency: inv.currency,
+          notes: "Marked paid from invoice list",
         });
-      });
+      }),
+    );
+    const succeeded = results.filter((result) => result.status === "fulfilled").length;
+    const failed = results.length - succeeded;
     setSelectedIds(new Set());
+    if (failed > 0) {
+      toast.error(
+        `${succeeded} payment${succeeded === 1 ? "" : "s"} recorded; ${failed} failed. Refreshing saved invoices.`,
+      );
+    } else if (succeeded > 0) {
+      toast.success(
+        `${succeeded} invoice${succeeded === 1 ? "" : "s"} marked paid with payment records.`,
+      );
+    } else {
+      toast.info("Select an issued invoice with an outstanding balance.");
+    }
   }
 
   // ── Builder save ───────────────────────────────────────────────
@@ -726,9 +776,7 @@ export function InvoicesTab() {
                     key={sv.name}
                     onClick={() => applyView(sv)}
                     className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-slate-50 ${
-                      activeViewName === sv.name
-                        ? "font-semibold text-blue-700"
-                        : "text-slate-700"
+                      activeViewName === sv.name ? "font-semibold text-blue-700" : "text-slate-700"
                     }`}
                   >
                     {sv.name === "Overdue & Pending" && (
@@ -775,7 +823,10 @@ export function InvoicesTab() {
                   <input
                     type="date"
                     value={advDateFrom}
-                    onChange={(e) => { setAdvDateFrom(e.target.value); setPage(1); }}
+                    onChange={(e) => {
+                      setAdvDateFrom(e.target.value);
+                      setPage(1);
+                    }}
                     className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                   />
                 </div>
@@ -786,7 +837,10 @@ export function InvoicesTab() {
                   <input
                     type="date"
                     value={advDateTo}
-                    onChange={(e) => { setAdvDateTo(e.target.value); setPage(1); }}
+                    onChange={(e) => {
+                      setAdvDateTo(e.target.value);
+                      setPage(1);
+                    }}
                     className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                   />
                 </div>
@@ -802,7 +856,10 @@ export function InvoicesTab() {
                     type="number"
                     placeholder="0"
                     value={advAmountMin}
-                    onChange={(e) => { setAdvAmountMin(e.target.value); setPage(1); }}
+                    onChange={(e) => {
+                      setAdvAmountMin(e.target.value);
+                      setPage(1);
+                    }}
                     className="w-28 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                   />
                 </div>
@@ -814,7 +871,10 @@ export function InvoicesTab() {
                     type="number"
                     placeholder="∞"
                     value={advAmountMax}
-                    onChange={(e) => { setAdvAmountMax(e.target.value); setPage(1); }}
+                    onChange={(e) => {
+                      setAdvAmountMax(e.target.value);
+                      setPage(1);
+                    }}
                     className="w-28 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                   />
                 </div>
@@ -827,7 +887,10 @@ export function InvoicesTab() {
                 </label>
                 <select
                   value={advSalesperson}
-                  onChange={(e) => { setAdvSalesperson(e.target.value); setPage(1); }}
+                  onChange={(e) => {
+                    setAdvSalesperson(e.target.value);
+                    setPage(1);
+                  }}
                   className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
                 >
                   {SALESPERSON_OPTIONS.map((sp) => (

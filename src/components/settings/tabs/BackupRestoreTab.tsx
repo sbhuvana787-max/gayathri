@@ -1,19 +1,10 @@
-import { useState } from "react";
-import { DatabaseBackup, Upload, Download, Check } from "lucide-react";
-import { SectionCard, PrimaryButton, SecondaryButton, StatusPill, fmtDate } from "@/components/settings/shared";
-import { recentBackups } from "@/lib/settings-data";
+import { DatabaseBackup, Upload } from "lucide-react";
+import { SectionCard, PrimaryButton, SecondaryButton } from "@/components/settings/shared";
+import { toast } from "sonner";
 
 export function BackupRestoreTab() {
-  const [running, setRunning] = useState(false);
-  const [justCompleted, setJustCompleted] = useState(false);
-
   function runBackup() {
-    setRunning(true);
-    setTimeout(() => {
-      setRunning(false);
-      setJustCompleted(true);
-      setTimeout(() => setJustCompleted(false), 3000);
-    }, 1600);
+    toast.error("Backup is unavailable until a secure server-side backup provider is configured.");
   }
 
   return (
@@ -35,18 +26,12 @@ export function BackupRestoreTab() {
           <div>
             <p className="text-sm font-medium text-foreground">Run a manual backup now</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Scheduled backups also run automatically every night at 2:00 AM.
+              Scheduled backups are unavailable until server-side backup storage is configured.
             </p>
           </div>
-          {justCompleted ? (
-            <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-              <Check className="h-4 w-4" /> Backup completed
-            </span>
-          ) : (
-            <PrimaryButton icon={DatabaseBackup} onClick={runBackup} className={running ? "opacity-70" : ""}>
-              {running ? "Running backup…" : "Run Manual Backup"}
-            </PrimaryButton>
-          )}
+          <PrimaryButton icon={DatabaseBackup} onClick={runBackup}>
+            Run Manual Backup
+          </PrimaryButton>
         </div>
       </SectionCard>
 
@@ -81,29 +66,11 @@ export function BackupRestoreTab() {
               </tr>
             </thead>
             <tbody>
-              {recentBackups.map((b) => (
-                <tr key={b.id} className="border-b border-slate-50 last:border-0">
-                  <td className="px-6 py-3 font-medium text-foreground">
-                    {fmtDate(b.createdAt.slice(0, 10))}{" "}
-                    <span className="text-muted-foreground">
-                      {new Date(b.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 capitalize text-muted-foreground">{b.type}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{b.size}</td>
-                  <td className="px-4 py-3">
-                    <StatusPill status={b.status === "completed" ? "active" : "cancelled"} label={b.status} />
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <button
-                      disabled={b.status === "failed"}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
-                    >
-                      <Download className="h-3.5 w-3.5" /> Download
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              <tr>
+                <td colSpan={5} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                  No backup records are available.
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

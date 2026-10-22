@@ -208,8 +208,8 @@ export const invoicesService = {
       if (itemsErr) throw itemsErr;
     }
 
-    // 3. Create stock-out movements (skipped for duplicates/drafts without actual sale)
-    if (!skipMovements)
+    // Drafts and cancelled records do not represent a sale and must not change stock.
+    if (!skipMovements && !["draft", "cancelled"].includes(invoice.status))
       for (const item of invoice.items) {
         if (!item.productId || !isUUID(item.productId)) continue;
         await inventoryMovementsService.create({
@@ -287,16 +287,5 @@ export const invoicesService = {
   async delete(id: string): Promise<void> {
     const { error } = await supabase.from("invoices").delete().eq("id", id);
     if (error) throw error;
-  },
-
-  /** Update status/payment on multiple invoices. */
-  async bulkMarkPaid(ids: string[], grandTotals: Map<string, number>): Promise<void> {
-    for (const id of ids) {
-      const total = grandTotals.get(id) ?? 0;
-      await supabase
-        .from("invoices")
-        .update({ status: "paid", payment_status: "paid", amount_paid: total })
-        .eq("id", id);
-    }
   },
 };

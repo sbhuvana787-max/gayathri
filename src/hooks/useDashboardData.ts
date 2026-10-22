@@ -12,6 +12,7 @@ import { useInvoices } from "./useInvoicesQuery";
 import { useCustomers } from "./useCustomersQuery";
 import { useProducts } from "./useProductsQuery";
 import { useInventoryMovements } from "./useInventoryMovementsQuery";
+import { useCreditNotes } from "./useCreditNotesQuery";
 import { computeDocumentTotals } from "../lib/billing-data";
 import type { Invoice } from "../lib/billing-data";
 import { dbToProduct } from "../services/products";
@@ -36,10 +37,6 @@ function timeAgo(isoOrDate: string): string {
   if (hrs < 24) return `${hrs} hr${hrs > 1 ? "s" : ""} ago`;
   const days = Math.floor(hrs / 24);
   return `${days} day${days > 1 ? "s" : ""} ago`;
-}
-
-function monthKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 // ── Return shape ──────────────────────────────────────────────────────
@@ -97,45 +94,70 @@ export interface DashboardData {
 
 // ── Hook ──────────────────────────────────────────────────────────────
 
-export function useDashboardData(businessId: string | null) {
+export function useDashboardData(businessId: string | null, businessTimezone = "UTC") {
   const invoicesQ = useInvoices(businessId);
   const customersQ = useCustomers(businessId);
   const productsQ = useProducts(businessId);
   const movementsQ = useInventoryMovements(businessId);
+  const creditNotesQ = useCreditNotes(businessId);
 
   const isLoading =
-    invoicesQ.isLoading || customersQ.isLoading || productsQ.isLoading || movementsQ.isLoading;
+    invoicesQ.isLoading || customersQ.isLoading || productsQ.isLoading || movementsQ.isLoading || creditNotesQ.isLoading;
 
-  const isError = invoicesQ.isError || customersQ.isError || productsQ.isError;
+  const isError = invoicesQ.isError || customersQ.isError || productsQ.isError || creditNotesQ.isError;
 
   const data = useMemo<DashboardData>(() => {
     const invoices = invoicesQ.data ?? [];
     const customers = customersQ.data ?? [];
     const dbProducts = productsQ.data ?? [];
     const movements = movementsQ.data ?? [];
+    const creditsByInvoice = new Map<string, number>();
+    for (const credit of creditNotesQ.data ?? []) {
+      if (credit.invoiceId && ["issued", "applied"].includes(credit.status)) {
+        creditsByInvoice.set(
+          credit.invoiceId,
+          (creditsByInvoice.get(credit.invoiceId) ?? 0) + credit.grandTotal,
+        );
+      }
+    }
+    const netGrandTotal = (invoice: Invoice) =>
+      Math.max(0, grandTotal(invoice) - (creditsByInvoice.get(invoice.id) ?? 0));
 
     const products = dbProducts.map(dbToProduct);
     const customerNameMap = new Map(customers.map((c) => [c.id, c.name]));
     const productNameMap = new Map(dbProducts.map((p) => [p.id, p.name]));
 
     const now = new Date();
-    const thisMonthStr = monthKey(now);
-    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthStr = monthKey(lastMonthDate);
+    const localDateKey = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: businessTimezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(now);
+    const [year, month, day] = localDateKey.split("-").map(Number);
+    const todayUtc = new Date(Date.UTC(year, month - 1, day));
+    const thisMonthStr = localDateKey.slice(0, 7);
+    const lastMonthStr = new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
+    const issuedInvoices = invoices.filter((inv) =>
+      ["sent", "partial", "paid", "overdue"].includes(inv.status),
+    );
 
     // ── Revenue per calendar date ─────────────────────────────────
     const revenueByDate: Record<string, number> = {};
-    invoices.forEach((inv) => {
-      if (inv.status === "cancelled") return;
-      revenueByDate[inv.createdDate] = (revenueByDate[inv.createdDate] ?? 0) + grandTotal(inv);
+    issuedInvoices.forEach((inv) => {
+      revenueByDate[inv.createdDate] = (revenueByDate[inv.createdDate] ?? 0) + netGrandTotal(inv);
     });
 
     // ── Revenue Overview chart — last 13 calendar days ────────────
     const revenueChartPoints = Array.from({ length: 13 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (12 - i));
+      const d = new Date(todayUtc);
+      d.setUTCDate(day - (12 - i));
       const key = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+      const label = new Intl.DateTimeFormat("en-IN", {
+        timeZone: "UTC",
+        month: "short",
+        day: "numeric",
+      }).format(d);
       return { date: label, revenue: revenueByDate[key] ?? 0 };
     });
 
@@ -157,21 +179,16 @@ export function useDashboardData(businessId: string | null) {
     );
 
     // Start of current week (Monday)
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(todayUtc);
+    weekStart.setUTCDate(day - ((todayUtc.getUTCDay() + 6) % 7));
+    const weekStartKey = weekStart.toISOString().slice(0, 10);
 
-    invoices.forEach((inv) => {
-      const d = new Date(inv.createdDate + "T00:00:00");
-      if (d < weekStart) return;
-      // getDay(): 0=Sun,1=Mon…6=Sat  → map to Mon=0…Sun=6
-      const dayIndex = (d.getDay() + 6) % 7;
+    issuedInvoices.forEach((inv) => {
+      if (inv.createdDate < weekStartKey || inv.createdDate > localDateKey) return;
+      const d = new Date(`${inv.createdDate}T00:00:00Z`);
+      const dayIndex = (d.getUTCDay() + 6) % 7;
       const dayName = DAY_NAMES[dayIndex];
-      if (inv.status === "cancelled") {
-        salesCountByDay[dayName].returns++;
-      } else {
-        salesCountByDay[dayName].sales++;
-      }
+      salesCountByDay[dayName].sales++;
     });
 
     const salesData: DashboardSalesPoint[] = DAY_NAMES.map((day) => ({
@@ -181,8 +198,7 @@ export function useDashboardData(businessId: string | null) {
 
     // ── Top Products by revenue (from invoice line-items) ─────────
     const productRevMap: Record<string, { name: string; sales: number }> = {};
-    invoices.forEach((inv) => {
-      if (inv.status === "cancelled") return;
+    issuedInvoices.forEach((inv) => {
       (inv.items ?? []).forEach((item) => {
         const key = item.productId || "unknown";
         const name = (item.productId && productNameMap.get(item.productId)) || "Unknown Product";
@@ -199,13 +215,13 @@ export function useDashboardData(businessId: string | null) {
       .map((p, i) => ({ ...p, color: TOP_PRODUCT_COLORS[i] }));
 
     // ── Monthly revenue (this month vs last month) ─────────────────
-    const thisMonthRevenue = invoices
-      .filter((inv) => inv.createdDate.startsWith(thisMonthStr) && inv.status !== "cancelled")
-      .reduce((s, inv) => s + grandTotal(inv), 0);
+    const thisMonthRevenue = issuedInvoices
+      .filter((inv) => inv.createdDate.startsWith(thisMonthStr))
+      .reduce((s, inv) => s + netGrandTotal(inv), 0);
 
-    const lastMonthRevenue = invoices
-      .filter((inv) => inv.createdDate.startsWith(lastMonthStr) && inv.status !== "cancelled")
-      .reduce((s, inv) => s + grandTotal(inv), 0);
+    const lastMonthRevenue = issuedInvoices
+      .filter((inv) => inv.createdDate.startsWith(lastMonthStr))
+      .reduce((s, inv) => s + netGrandTotal(inv), 0);
 
     const growthNum =
       lastMonthRevenue > 0
@@ -229,8 +245,9 @@ export function useDashboardData(businessId: string | null) {
       )
       .slice(0, 20)
       .forEach((inv) => {
+        if (inv.status === "draft" || inv.status === "cancelled") return;
         const cname = customerNameMap.get(inv.customerId) ?? "Customer";
-        const total = grandTotal(inv);
+        const total = netGrandTotal(inv);
         const ts = new Date(inv.createdDate + "T00:00:00").getTime();
 
         if (inv.status === "paid") {
@@ -255,7 +272,7 @@ export function useDashboardData(businessId: string | null) {
             ts,
             type: "warning",
           });
-        } else if (inv.status !== "cancelled") {
+        } else {
           activityItems.push({
             key: `inv-created-${inv.id}`,
             icon: "🧾",
@@ -347,8 +364,8 @@ export function useDashboardData(businessId: string | null) {
     const custValueStr = newCustomers > 0 ? `+${newCustomers} new` : "No new";
 
     // Payment Recovery
-    const paidCount = invoices.filter((i) => i.status === "paid").length;
-    const nonCancelled = invoices.filter((i) => i.status !== "cancelled").length;
+    const paidCount = issuedInvoices.filter((i) => i.status === "paid").length;
+    const nonCancelled = issuedInvoices.length;
     const collectionRate = nonCancelled > 0 ? Math.round((paidCount / nonCancelled) * 100) : 100;
 
     const healthMetrics: DashboardHealthMetric[] = [
@@ -424,7 +441,7 @@ export function useDashboardData(businessId: string | null) {
       aiInsight,
       isEmpty,
     };
-  }, [invoicesQ.data, customersQ.data, productsQ.data, movementsQ.data]);
+  }, [invoicesQ.data, customersQ.data, productsQ.data, movementsQ.data, creditNotesQ.data, businessTimezone]);
 
   return { data, isLoading, isError };
 }

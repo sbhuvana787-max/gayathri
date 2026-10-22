@@ -315,8 +315,8 @@ function TemplateFormModal({
         toast.success("Template created");
       }
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Something went wrong");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Something went wrong");
     }
   }
 
@@ -708,8 +708,8 @@ export function TemplatesTab() {
     try {
       await duplicateMutation.mutateAsync(t.id);
       toast.success(`"${t.template_name}" duplicated`);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Duplicate failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Duplicate failed");
     }
   }
 
@@ -719,8 +719,8 @@ export function TemplatesTab() {
       await deleteMutation.mutateAsync(deleteTpl.id);
       toast.success("Template deleted");
       setDeleteTpl(null);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Delete failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
     }
   }
 
@@ -729,8 +729,8 @@ export function TemplatesTab() {
       await defaultMutation.mutateAsync({ id: t.id, templateType: t.template_type });
       toast.success(`"${t.template_name}" set as default for ${TEMPLATE_TYPE_LABELS[t.template_type]}`);
       setPreviewTpl(null);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to set default");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to set default");
     }
   }
 
@@ -739,8 +739,8 @@ export function TemplatesTab() {
     try {
       await statusMutation.mutateAsync({ id: t.id, status: next });
       toast.success(`Template ${next === "active" ? "activated" : "deactivated"}`);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Status update failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Status update failed");
     }
   }
 

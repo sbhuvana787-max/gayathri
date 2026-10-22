@@ -137,6 +137,23 @@ const throwIfError = <T>(result: { data: T | null; error: unknown }) => {
 };
 
 export const financeService = {
+  async saveBusinessPreferences(
+    businessId: string,
+    currency: string,
+    financialYearStartMonth: number,
+    decimalPrecision: number,
+    financialYear: string,
+  ) {
+    const { error } = await supabase.rpc("save_business_financial_preferences", {
+      p_business_id: businessId,
+      p_currency: currency,
+      p_financial_year_start_month: financialYearStartMonth,
+      p_decimal_precision: decimalPrecision,
+      p_financial_year: financialYear,
+    });
+    if (error) throw error;
+  },
+
   async getSnapshot(businessId: string): Promise<FinanceSnapshot> {
     const [transactions, accounts, settings, payments, invoices, bills, billPayments] =
       await Promise.all([
@@ -349,11 +366,10 @@ export const financeService = {
 };
 
 export function invoiceTotal(invoice: FinanceInvoice): number {
-  const totalCents = invoice.invoice_items.reduce((sum, item) => {
-    const baseCents = Math.round(
-      item.quantity * item.unit_price * (1 - item.discount_percent / 100) * 100,
-    );
-    return sum + baseCents + Math.round((baseCents * item.gst_percent) / 100);
+  const preRoundTotal = invoice.invoice_items.reduce((sum, item) => {
+    const taxable = item.quantity * item.unit_price * (1 - item.discount_percent / 100);
+    return sum + taxable + (taxable * item.gst_percent) / 100;
   }, 0);
-  return totalCents / 100;
+  // Match Billing's displayed total and the round-off shown on invoices.
+  return Math.round(preRoundTotal);
 }

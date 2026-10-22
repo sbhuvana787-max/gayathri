@@ -45,6 +45,7 @@ export function useCreatePayment(businessId: string | null) {
       if (businessId) {
         qc.invalidateQueries({ queryKey: paymentKeys.byBusiness(businessId) });
         qc.invalidateQueries({ queryKey: ["invoices", businessId] });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
       }
     },
   });
@@ -63,7 +64,10 @@ export function useUpdatePayment(businessId: string | null) {
       input: { mode?: PaymentMode; date?: string; transactionRef?: string; notes?: string };
     }) => paymentsService.update(id, input),
     onSuccess: () => {
-      if (businessId) qc.invalidateQueries({ queryKey: paymentKeys.byBusiness(businessId) });
+      if (businessId) {
+        qc.invalidateQueries({ queryKey: paymentKeys.byBusiness(businessId) });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
+      }
     },
   });
 }
@@ -73,19 +77,15 @@ export function useUpdatePayment(businessId: string | null) {
 export function useDeletePayment(businessId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      invoiceId,
-      amount,
-    }: {
-      id: string;
-      invoiceId: string;
-      amount: number;
-    }) => paymentsService.delete(id, invoiceId, amount),
+    mutationFn: ({ id }: { id: string }) => {
+      if (!businessId) throw new Error("Business context is required.");
+      return paymentsService.delete(id, businessId);
+    },
     onSuccess: () => {
       if (businessId) {
         qc.invalidateQueries({ queryKey: paymentKeys.byBusiness(businessId) });
         qc.invalidateQueries({ queryKey: ["invoices", businessId] });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
       }
     },
   });
@@ -96,19 +96,15 @@ export function useDeletePayment(businessId: string | null) {
 export function useRefundPayment(businessId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      invoiceId,
-      amount,
-    }: {
-      id: string;
-      invoiceId: string;
-      amount: number;
-    }) => paymentsService.refund(id, invoiceId, amount),
+    mutationFn: ({ id }: { id: string }) => {
+      if (!businessId) throw new Error("Business context is required.");
+      return paymentsService.refund(id, businessId);
+    },
     onSuccess: () => {
       if (businessId) {
         qc.invalidateQueries({ queryKey: paymentKeys.byBusiness(businessId) });
         qc.invalidateQueries({ queryKey: ["invoices", businessId] });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
       }
     },
   });
@@ -119,19 +115,15 @@ export function useRefundPayment(businessId: string | null) {
 export function useVoidPayment(businessId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      invoiceId,
-      amount,
-    }: {
-      id: string;
-      invoiceId: string;
-      amount: number;
-    }) => paymentsService.void(id, invoiceId, amount),
+    mutationFn: ({ id }: { id: string }) => {
+      if (!businessId) throw new Error("Business context is required.");
+      return paymentsService.void(id, businessId);
+    },
     onSuccess: () => {
       if (businessId) {
         qc.invalidateQueries({ queryKey: paymentKeys.byBusiness(businessId) });
         qc.invalidateQueries({ queryKey: ["invoices", businessId] });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
       }
     },
   });

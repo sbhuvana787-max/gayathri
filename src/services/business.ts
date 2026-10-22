@@ -48,4 +48,22 @@ export const businessService = {
     if (error) throw error;
     return data as Business;
   },
+
+  async updateOwned(ownerId: string, patch: Partial<Business>): Promise<Business> {
+    const {
+      id: _id,
+      owner_id: _ownerId,
+      created_at: _createdAt,
+      updated_at: _updatedAt,
+      ...values
+    } = patch;
+    const { data, error } = await supabase
+      .from("business")
+      .update(values)
+      .eq("owner_id", ownerId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as Business;
+  },
 };

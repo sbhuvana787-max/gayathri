@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { templatesService } from "../services/templates";
-import type { TemplateInput, TemplateStatus, TemplateType } from "../services/templates";
+import type { DbTemplate, TemplateInput, TemplateStatus, TemplateType } from "../services/templates";
 
 // ── Query keys ─────────────────────────────────────────────────────
 
@@ -84,8 +84,8 @@ export function useSetDefaultTemplate(businessId: string | null) {
     onMutate: async ({ id, templateType }) => {
       if (!businessId) return;
       await qc.cancelQueries({ queryKey: templateKeys.byBusiness(businessId) });
-      const previous = qc.getQueryData(templateKeys.byBusiness(businessId));
-      qc.setQueryData(templateKeys.byBusiness(businessId), (old: any[]) =>
+      const previous = qc.getQueryData<DbTemplate[]>(templateKeys.byBusiness(businessId));
+      qc.setQueryData<DbTemplate[]>(templateKeys.byBusiness(businessId), (old) =>
         (old ?? []).map((t) =>
           t.template_type === templateType
             ? { ...t, is_default: t.id === id }
@@ -94,9 +94,9 @@ export function useSetDefaultTemplate(businessId: string | null) {
       );
       return { previous };
     },
-    onError: (_err, _vars, ctx: any) => {
+    onError: (_err, _vars, ctx) => {
       if (businessId && ctx?.previous) {
-        qc.setQueryData(templateKeys.byBusiness(businessId), ctx.previous);
+        qc.setQueryData<DbTemplate[]>(templateKeys.byBusiness(businessId), ctx.previous);
       }
     },
     onSettled: () => {
@@ -115,15 +115,15 @@ export function useUpdateTemplateStatus(businessId: string | null) {
     onMutate: async ({ id, status }) => {
       if (!businessId) return;
       await qc.cancelQueries({ queryKey: templateKeys.byBusiness(businessId) });
-      const previous = qc.getQueryData(templateKeys.byBusiness(businessId));
-      qc.setQueryData(templateKeys.byBusiness(businessId), (old: any[]) =>
+      const previous = qc.getQueryData<DbTemplate[]>(templateKeys.byBusiness(businessId));
+      qc.setQueryData<DbTemplate[]>(templateKeys.byBusiness(businessId), (old) =>
         (old ?? []).map((t) => (t.id === id ? { ...t, status } : t))
       );
       return { previous };
     },
-    onError: (_err, _vars, ctx: any) => {
+    onError: (_err, _vars, ctx) => {
       if (businessId && ctx?.previous) {
-        qc.setQueryData(templateKeys.byBusiness(businessId), ctx.previous);
+        qc.setQueryData<DbTemplate[]>(templateKeys.byBusiness(businessId), ctx.previous);
       }
     },
     onSettled: () => {

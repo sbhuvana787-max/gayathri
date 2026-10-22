@@ -160,6 +160,7 @@ export function CrmSettingsTab() {
       await saveSettings.mutateAsync({
         customer_number_prefix: prefix.trim().toUpperCase() || "CUS",
         customer_number_next_value: Math.max(1, nextValue),
+        customer_number_format: settings?.customer_number_format ?? "cust-seq",
         default_credit_days: Math.max(0, Number(creditDays)),
         default_currency: currency,
         default_country: country,

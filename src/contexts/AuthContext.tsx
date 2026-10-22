@@ -23,12 +23,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     // Restore session on mount
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!active) return;
+        setSession(error ? null : data.session);
+        setUser(error ? null : (data.session?.user ?? null));
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+      });
 
     // Subscribe to auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -40,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => {
+      active = false;
       listener.subscription.unsubscribe();
     };
   }, []);

@@ -54,6 +54,13 @@ import { computeCNTotals } from "@/services/creditNotes";
 
 const PAGE_SIZE = 8;
 
+type InvoiceForCreditNoteForm = {
+  id: string;
+  invoiceNumber: string;
+  customerId: string;
+  items: CreditNoteItem[];
+};
+
 const EMPTY_ITEM = (): CreditNoteItem => ({
   productId: "",
   productName: "",
@@ -191,7 +198,7 @@ function CNFormModal({
   title: string;
   initial?: CNFormState;
   onSave: (f: CNFormState) => void;
-  invoices: CreditNote["invoiceId"] extends string ? { id: string; invoiceNumber: string; customerId: string; items: CreditNoteItem[] }[] : never;
+  invoices: InvoiceForCreditNoteForm[];
   customers: { id: string; name: string; city?: string | null }[];
   products: { id: string; name: string; selling_price: number; gst_percent?: number }[];
   isSaving: boolean;
@@ -203,7 +210,7 @@ function CNFormModal({
     setForm((p) => ({ ...p, [k]: v }));
 
   const handleInvoiceChange = (id: string) => {
-    const inv = (invoices as any[]).find((i: any) => i.id === id);
+    const inv = invoices.find((i) => i.id === id);
     if (!inv) {
       setForm((p) => ({ ...p, invoiceId: id, customerId: "" }));
       return;
@@ -273,7 +280,7 @@ function CNFormModal({
             className="h-9 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-foreground outline-none focus:border-[color:var(--brand-electric)] focus:ring-1 focus:ring-[color:var(--brand-electric)]"
           >
             <option value="">Select invoice…</option>
-            {(invoices as any[]).map((inv: any) => {
+            {invoices.map((inv) => {
               const cust = customers.find((c) => c.id === inv.customerId);
               return (
                 <option key={inv.id} value={inv.id}>
@@ -1059,7 +1066,7 @@ export function CreditNotesTab() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         title="New Credit Note"
-        invoices={invoicesForForm as any}
+        invoices={invoicesForForm}
         customers={customersForForm}
         products={productsForForm}
         isSaving={isSaving}
@@ -1082,7 +1089,7 @@ export function CreditNotesTab() {
             items: editTarget.items.length > 0 ? editTarget.items : [EMPTY_ITEM()],
             status: editTarget.status,
           }}
-          invoices={invoicesForForm as any}
+          invoices={invoicesForForm}
           customers={customersForForm}
           products={productsForForm}
           isSaving={isSaving}

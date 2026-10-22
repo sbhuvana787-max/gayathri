@@ -1,32 +1,78 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
+import { toast } from "sonner";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { SectionCard, FormField, TextInput, TextArea, Select, SaveBar } from "@/components/settings/shared";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUpdateBusiness } from "@/hooks/useBusinessQuery";
+import {
+  SectionCard,
+  FormField,
+  TextInput,
+  TextArea,
+  Select,
+  SaveBar,
+} from "@/components/settings/shared";
 import { businessTypeOptions, indianStates } from "@/lib/settings-data";
 
 export function BusinessProfileTab() {
   const { business } = useBusiness();
+  const { user } = useAuth();
+  const updateBusiness = useUpdateBusiness(user?.id ?? null);
 
-  const [name, setName] = useState(business?.business_name ?? "Nexora Retail Pvt. Ltd.");
-  const [type, setType] = useState("pvt-ltd");
-  const [gstin, setGstin] = useState(business?.gst_number ?? "27AAAPL1234C1ZV");
-  const [pan, setPan] = useState(business?.pan_number ?? "AAAPL1234C");
-  const [address, setAddress] = useState(business?.address ?? "402, Crescent Business Park, Andheri East");
-  const [city, setCity] = useState(business?.city ?? "Mumbai");
-  const [state, setState] = useState(business?.state ?? "Maharashtra");
-  const [country] = useState("India");
-  const [postalCode, setPostalCode] = useState("400069");
-  const [phone, setPhone] = useState(business?.phone ?? "+91 98200 12345");
-  const [email, setEmail] = useState(business?.email ?? "hello@nexora.app");
-  const [website, setWebsite] = useState("https://nexora.app");
-  const [description, setDescription] = useState(
-    "Nexora Retail runs a chain of specialty grocery stores across Mumbai, supplying fresh produce and packaged goods to over 1,200 households weekly."
-  );
+  const [name, setName] = useState("");
+  const [type, setType] = useState("");
+  const [gstin, setGstin] = useState("");
+  const [pan, setPan] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [country, setCountry] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [description, setDescription] = useState("");
   const [saved, setSaved] = useState(false);
 
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  useEffect(() => {
+    if (!business) return;
+    setName(business.business_name ?? "");
+    setType(business.business_type ?? "");
+    setGstin(business.gst_number ?? "");
+    setPan(business.pan_number ?? "");
+    setAddress(business.address ?? "");
+    setCity(business.city ?? "");
+    setState(business.state ?? "");
+    setCountry(business.country ?? "");
+    setPostalCode(business.postal_code ?? "");
+    setPhone(business.phone ?? "");
+    setEmail(business.email ?? "");
+    setWebsite(business.website ?? "");
+    setDescription(business.description ?? "");
+  }, [business]);
+
+  async function handleSave() {
+    try {
+      await updateBusiness.mutateAsync({
+        business_name: name.trim() || null,
+        business_type: type || null,
+        gst_number: gstin.trim() || null,
+        pan_number: pan.trim() || null,
+        address: address.trim() || null,
+        city: city.trim() || null,
+        state: state || null,
+        country: country.trim() || "India",
+        postal_code: postalCode.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        website: website.trim() || null,
+        description: description.trim() || null,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save business profile.");
+    }
   }
 
   return (
@@ -45,7 +91,12 @@ export function BusinessProfileTab() {
             <TextInput value={name} onChange={setName} />
           </FormField>
           <FormField label="Business Type">
-            <Select value={type} onChange={setType} options={businessTypeOptions} className="w-full" />
+            <Select
+              value={type}
+              onChange={setType}
+              options={businessTypeOptions}
+              className="w-full"
+            />
           </FormField>
           <FormField label="GSTIN" hint="15-character GST identification number">
             <TextInput value={gstin} onChange={setGstin} />
@@ -68,7 +119,7 @@ export function BusinessProfileTab() {
             />
           </FormField>
           <FormField label="Country">
-            <TextInput value={country} onChange={() => {}} />
+            <TextInput value={country} onChange={setCountry} />
           </FormField>
           <FormField label="Postal Code">
             <TextInput value={postalCode} onChange={setPostalCode} />
@@ -88,7 +139,11 @@ export function BusinessProfileTab() {
         </div>
       </SectionCard>
 
-      <SaveBar saved={saved} onSave={handleSave} />
+      <SaveBar
+        saved={saved}
+        onSave={handleSave}
+        label={updateBusiness.isPending ? "Saving…" : "Save Changes"}
+      />
     </div>
   );
 }

@@ -44,6 +44,7 @@ export function useCreateInvoice(businessId: string | null) {
     onSuccess: () => {
       if (businessId) {
         qc.invalidateQueries({ queryKey: invoiceKeys.byBusiness(businessId) });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
         // Stock was deducted — refresh products
         qc.invalidateQueries({ queryKey: ["products", businessId] });
         qc.invalidateQueries({ queryKey: ["inventory_movements", businessId] });
@@ -60,6 +61,7 @@ export function useUpdateInvoice(businessId: string | null) {
     onSuccess: () => {
       if (businessId) {
         qc.invalidateQueries({ queryKey: invoiceKeys.byBusiness(businessId) });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
       }
     },
   });
@@ -72,6 +74,7 @@ export function useDeleteInvoice(businessId: string | null) {
     onSuccess: () => {
       if (businessId) {
         qc.invalidateQueries({ queryKey: invoiceKeys.byBusiness(businessId) });
+        qc.invalidateQueries({ queryKey: ["reports", businessId] });
       }
     },
   });

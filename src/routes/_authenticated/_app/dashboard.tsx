@@ -66,11 +66,41 @@ export const Route = createFileRoute("/_authenticated/_app/dashboard")({
 // ── Quick Actions (navigation only, no data needed) ───────────────
 
 const quickActions = [
-  { label: "Create Invoice",    icon: Plus,        to: "/billing",   color: "bg-blue-600 hover:bg-blue-700",    desc: "New GST invoice"    },
-  { label: "Add Customer",      icon: UserPlus,    to: "/crm",       color: "bg-violet-600 hover:bg-violet-700",desc: "Register customer"  },
-  { label: "Add Product",       icon: PackagePlus, to: "/inventory", color: "bg-emerald-600 hover:bg-emerald-700",desc:"Add to inventory"  },
-  { label: "View Reports",      icon: BarChart3,   to: "/reports",   color: "bg-amber-600 hover:bg-amber-700",  desc: "Business insights"  },
-  { label: "Open AI Assistant", icon: Sparkles,    to: "/ai-assistant",color: "bg-[image:var(--gradient-brand)]",desc: "Ask Nexora AI"   },
+  {
+    label: "Create Invoice",
+    icon: Plus,
+    to: "/billing",
+    color: "bg-blue-600 hover:bg-blue-700",
+    desc: "New GST invoice",
+  },
+  {
+    label: "Add Customer",
+    icon: UserPlus,
+    to: "/crm",
+    color: "bg-violet-600 hover:bg-violet-700",
+    desc: "Register customer",
+  },
+  {
+    label: "Add Product",
+    icon: PackagePlus,
+    to: "/inventory",
+    color: "bg-emerald-600 hover:bg-emerald-700",
+    desc: "Add to inventory",
+  },
+  {
+    label: "View Reports",
+    icon: BarChart3,
+    to: "/reports",
+    color: "bg-amber-600 hover:bg-amber-700",
+    desc: "Business insights",
+  },
+  {
+    label: "Open AI Assistant",
+    icon: Sparkles,
+    to: "/ai-assistant",
+    color: "bg-[image:var(--gradient-brand)]",
+    desc: "Ask Nexora AI",
+  },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -98,21 +128,30 @@ function LiveStatCards({
   const { data: dbProducts = [], isLoading: prodLoading } = useProducts(businessId);
   const { data: dbCustomers = [], isLoading: custLoading } = useCustomers(businessId);
 
-  const today = new Date().toISOString().split("T")[0];
+  const { business } = useBusiness();
+  const today = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: business?.timezone || "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
-  const todayInvoices = invoices.filter((inv) => inv.createdDate === today);
+  const todayInvoices = invoices.filter(
+    (inv) =>
+      inv.createdDate === today && ["sent", "partial", "paid", "overdue"].includes(inv.status),
+  );
   const todayRevenue = todayInvoices.reduce((sum, inv) => {
     const t = computeDocumentTotals(inv.items, inv.isInterState);
     return sum + t.grandTotal;
   }, 0);
   const todayOrders = todayInvoices.length;
 
-  const outstandingInvoices = invoices.filter(
-    (inv) => inv.status !== "paid" && inv.status !== "cancelled"
+  const outstandingInvoices = invoices.filter((inv) =>
+    ["sent", "partial", "overdue"].includes(inv.status),
   );
   const outstandingAmount = outstandingInvoices.reduce((sum, inv) => {
     const t = computeDocumentTotals(inv.items, inv.isInterState);
-    return sum + (t.grandTotal - inv.amountPaid);
+    return sum + Math.max(0, t.grandTotal - inv.amountPaid);
   }, 0);
 
   const products = dbProducts.map(dbToProduct);
@@ -237,10 +276,7 @@ function ChartTooltip({
       <p className="mb-1.5 text-xs font-semibold text-slate-500">{label}</p>
       {payload.map((p, i) => (
         <p key={i} className="text-sm font-bold text-foreground">
-          {fmt(p.value)}{" "}
-          <span className="text-xs font-normal text-muted-foreground">
-            {p.name}
-          </span>
+          {fmt(p.value)} <span className="text-xs font-normal text-muted-foreground">{p.name}</span>
         </p>
       ))}
     </div>
@@ -251,38 +287,36 @@ function ChartTooltip({
 
 function InventoryOverview({ businessId }: { businessId: string | null }) {
   const { data: dbProducts = [], isLoading: productsLoading } = useProducts(businessId);
-  const { data: allMovements = [], isLoading: movementsLoading } = useInventoryMovements(businessId);
+  const { data: allMovements = [], isLoading: movementsLoading } =
+    useInventoryMovements(businessId);
 
-  const products   = dbProducts.map(dbToProduct);
+  const products = dbProducts.map(dbToProduct);
   const outOfStock = products.filter((p) => getStockStatus(p) === "out-of-stock").length;
-  const lowStock   = products.filter((p) => {
+  const lowStock = products.filter((p) => {
     const s = getStockStatus(p);
     return s === "low-stock" || s === "critical";
   }).length;
-  const totalAlerts    = outOfStock + lowStock;
-  const inventoryValue = products.reduce(
-    (sum, p) => sum + p.currentStock * p.purchasePrice,
-    0
-  );
+  const totalAlerts = outOfStock + lowStock;
+  const inventoryValue = products.reduce((sum, p) => sum + p.currentStock * p.purchasePrice, 0);
   const recentMovements = allMovements.slice(0, 6);
 
   function movementIcon(type: string) {
-    if (type === "in")  return <PackageOpen className="h-3.5 w-3.5 text-emerald-600" />;
+    if (type === "in") return <PackageOpen className="h-3.5 w-3.5 text-emerald-600" />;
     if (type === "out") return <PackageMinus className="h-3.5 w-3.5 text-red-500" />;
     return <SlidersHorizontal className="h-3.5 w-3.5 text-violet-500" />;
   }
   function movementBg(type: string) {
-    if (type === "in")  return "bg-emerald-50";
+    if (type === "in") return "bg-emerald-50";
     if (type === "out") return "bg-red-50";
     return "bg-violet-50";
   }
   function movementQty(m: (typeof allMovements)[0]) {
-    if (m.movement_type === "in")  return `+${m.quantity}`;
+    if (m.movement_type === "in") return `+${m.quantity}`;
     if (m.movement_type === "out") return `-${m.quantity}`;
     return m.adjustment_type === "increase" ? `+${m.quantity}` : `-${m.quantity}`;
   }
   function movementQtyColor(m: (typeof allMovements)[0]) {
-    if (m.movement_type === "in")  return "text-emerald-700";
+    if (m.movement_type === "in") return "text-emerald-700";
     if (m.movement_type === "out") return "text-red-600";
     return m.adjustment_type === "increase" ? "text-emerald-700" : "text-red-600";
   }
@@ -390,7 +424,9 @@ function InventoryOverview({ businessId }: { businessId: string | null }) {
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <PackageOpen className="h-8 w-8 text-slate-300 mb-2" />
               <p className="text-xs font-medium text-muted-foreground">No stock movements yet</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Add products and record stock in/out to see activity here.</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Add products and record stock in/out to see activity here.
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -401,7 +437,9 @@ function InventoryOverview({ businessId }: { businessId: string | null }) {
                   animate={{ opacity: 1, x: 0 }}
                   className="flex items-center gap-2.5"
                 >
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${movementBg(m.movement_type)}`}>
+                  <div
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${movementBg(m.movement_type)}`}
+                  >
                     {movementIcon(m.movement_type)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -413,7 +451,9 @@ function InventoryOverview({ businessId }: { businessId: string | null }) {
                       {fmtMovementDate(m.created_at)} · {fmtMovementTime(m.created_at)}
                     </p>
                   </div>
-                  <span className={`shrink-0 text-xs font-bold tabular-nums ${movementQtyColor(m)}`}>
+                  <span
+                    className={`shrink-0 text-xs font-bold tabular-nums ${movementQtyColor(m)}`}
+                  >
                     {movementQty(m)}
                   </span>
                 </motion.div>
@@ -453,7 +493,9 @@ function StatCard({ card, index }: { card: StatCardData; index: number }) {
         <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.bg}`}>
           <Icon className={`h-5 w-5 ${card.iconColor}`} />
         </div>
-        <span className={`flex items-center gap-0.5 text-xs font-semibold ${card.up ? "text-emerald-600" : "text-slate-500"}`}>
+        <span
+          className={`flex items-center gap-0.5 text-xs font-semibold ${card.up ? "text-emerald-600" : "text-slate-500"}`}
+        >
           {card.up ? <ArrowUpRight className="h-3.5 w-3.5" /> : null}
           {card.change}
         </span>
@@ -464,7 +506,9 @@ function StatCard({ card, index }: { card: StatCardData; index: number }) {
         <p className="text-xs text-muted-foreground">{card.sub}</p>
       </div>
       {/* Accent strip */}
-      <div className={`absolute bottom-0 left-0 h-0.5 w-full ${card.accent} opacity-0 transition-opacity group-hover:opacity-100`} />
+      <div
+        className={`absolute bottom-0 left-0 h-0.5 w-full ${card.accent} opacity-0 transition-opacity group-hover:opacity-100`}
+      />
     </motion.div>
   );
 }
@@ -487,9 +531,7 @@ function SectionCard({
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
         <div>
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-          {subtitle && (
-            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
-          )}
+          {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         {action}
       </div>
@@ -512,23 +554,12 @@ function EmptyChart({ message }: { message: string }) {
 // ── Chart skeleton ────────────────────────────────────────────────
 
 function ChartSkeleton({ height = 220 }: { height?: number }) {
-  return (
-    <div
-      className="animate-pulse rounded-xl bg-slate-100"
-      style={{ height }}
-    />
-  );
+  return <div className="animate-pulse rounded-xl bg-slate-100" style={{ height }} />;
 }
 
 // ── Revenue chart section ─────────────────────────────────────────
 
-function RevenueChart({
-  data,
-  isLoading,
-}: {
-  data: DashboardRevenuePoint[];
-  isLoading: boolean;
-}) {
+function RevenueChart({ data, isLoading }: { data: DashboardRevenuePoint[]; isLoading: boolean }) {
   const hasData = data.some((d) => d.revenue > 0);
 
   return (
@@ -539,10 +570,12 @@ function RevenueChart({
       action={
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-blue-500" />Revenue
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            Revenue
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-slate-300" />Target
+            <span className="h-2 w-2 rounded-full bg-slate-300" />
+            Target
           </span>
         </div>
       }
@@ -558,20 +591,48 @@ function RevenueChart({
           <AreaChart data={data} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.15} />
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.15} />
                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#94a3b8" stopOpacity={0.08} />
+                <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.08} />
                 <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+            />
             <Tooltip content={<ChartTooltip />} />
-            <Area type="monotone" dataKey="target"  name="Target"  stroke="#cbd5e1" strokeWidth={1.5} strokeDasharray="4 4" fill="url(#colorTarget)"  dot={false} />
-            <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#3b82f6" strokeWidth={2.5}                       fill="url(#colorRevenue)" dot={false} activeDot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "#fff" }} />
+            <Area
+              type="monotone"
+              dataKey="target"
+              name="Target"
+              stroke="#cbd5e1"
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              fill="url(#colorTarget)"
+              dot={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              name="Revenue"
+              stroke="#3b82f6"
+              strokeWidth={2.5}
+              fill="url(#colorRevenue)"
+              dot={false}
+              activeDot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "#fff" }}
+            />
           </AreaChart>
         </ResponsiveContainer>
       )}
@@ -601,7 +662,9 @@ function BusinessHealth({
           <svg className="absolute inset-0 -rotate-90" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="10" />
             <circle
-              cx="50" cy="50" r="42"
+              cx="50"
+              cy="50"
+              r="42"
               fill="none"
               stroke="url(#healthGrad)"
               strokeWidth="10"
@@ -610,7 +673,7 @@ function BusinessHealth({
             />
             <defs>
               <linearGradient id="healthGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%"   stopColor="#3b82f6" />
+                <stop offset="0%" stopColor="#3b82f6" />
                 <stop offset="100%" stopColor="#8b5cf6" />
               </linearGradient>
             </defs>
@@ -657,13 +720,7 @@ function BusinessHealth({
 
 // ── Sales Trend section ───────────────────────────────────────────
 
-function SalesTrend({
-  data,
-  isLoading,
-}: {
-  data: DashboardSalesPoint[];
-  isLoading: boolean;
-}) {
+function SalesTrend({ data, isLoading }: { data: DashboardSalesPoint[]; isLoading: boolean }) {
   const hasData = data.some((d) => d.sales > 0 || d.returns > 0);
 
   return (
@@ -678,7 +735,12 @@ function SalesTrend({
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-            <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              axisLine={false}
+              tickLine={false}
+            />
             <YAxis
               tick={{ fontSize: 11, fill: "#94a3b8" }}
               axisLine={false}
@@ -692,18 +754,32 @@ function SalesTrend({
                 return (
                   <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
                     <p className="mb-1 text-xs font-semibold text-slate-500">{label}</p>
-                    {payload.map((p: { value: number; name: string }, i: number) => (
+                    {payload.map((p, i) => (
                       <p key={i} className="text-sm font-bold text-foreground">
-                        {p.value}{" "}
-                        <span className="text-xs font-normal text-muted-foreground">{p.name}</span>
+                        {p.value ?? ""}{" "}
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {String(p.name ?? "")}
+                        </span>
                       </p>
                     ))}
                   </div>
                 );
               }}
             />
-            <Bar dataKey="sales"   name="Sales"     fill="#3b82f6" radius={[5, 5, 0, 0]} maxBarSize={36} />
-            <Bar dataKey="returns" name="Cancelled" fill="#fca5a5" radius={[5, 5, 0, 0]} maxBarSize={36} />
+            <Bar
+              dataKey="sales"
+              name="Sales"
+              fill="#3b82f6"
+              radius={[5, 5, 0, 0]}
+              maxBarSize={36}
+            />
+            <Bar
+              dataKey="returns"
+              name="Cancelled"
+              fill="#fca5a5"
+              radius={[5, 5, 0, 0]}
+              maxBarSize={36}
+            />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -741,7 +817,9 @@ function TopProducts({
           <div className="space-y-3">
             {products.map((p, i) => (
               <div key={p.name} className="flex items-center gap-3">
-                <span className="w-4 text-xs font-bold text-muted-foreground shrink-0">{i + 1}</span>
+                <span className="w-4 text-xs font-bold text-muted-foreground shrink-0">
+                  {i + 1}
+                </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="truncate text-xs font-medium text-foreground">{p.name}</span>
@@ -831,7 +909,9 @@ function RecentActivity({
                 transition={{ delay: 0.05 * i, duration: 0.3 }}
                 className="flex items-start gap-3"
               >
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm ${item.color}`}>
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm ${item.color}`}
+                >
                   {item.icon}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -856,18 +936,18 @@ function RecentActivity({
 // ── Main Page ─────────────────────────────────────────────────────
 
 function DashboardPage() {
-  const { business }  = useBusiness();
-  const businessId    = business?.id ?? null;
-  const { data, isLoading } = useDashboardData(businessId);
+  const { business } = useBusiness();
+  const businessId = business?.id ?? null;
+  const { data, isLoading } = useDashboardData(businessId, business?.timezone || "UTC");
 
-  const now        = new Date();
-  const greeting   = now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
+  const now = new Date();
+  const greeting =
+    now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
   const ownerFirst = business?.owner_name?.split(" ")[0] || "there";
 
   return (
     <div className="min-h-full px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1400px] space-y-7">
-
         {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -876,11 +956,21 @@ function DashboardPage() {
           className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
         >
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{greeting}, {ownerFirst} 👋</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {greeting}, {ownerFirst} 👋
+            </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              {now.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              {now.toLocaleDateString("en-IN", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
               {business?.business_name && (
-                <> · <span className="font-medium text-foreground">{business.business_name}</span></>
+                <>
+                  {" "}
+                  · <span className="font-medium text-foreground">{business.business_name}</span>
+                </>
               )}
             </p>
           </div>
@@ -931,12 +1021,16 @@ function DashboardPage() {
         {/* Row 2: Revenue Chart + Business Health */}
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <RevenueChart data={data.revenueData} isLoading={isLoading} />
-          <BusinessHealth metrics={data.healthMetrics} score={data.overallScore} isLoading={isLoading} />
+          <BusinessHealth
+            metrics={data.healthMetrics}
+            score={data.overallScore}
+            isLoading={isLoading}
+          />
         </div>
 
         {/* Row 3: Sales Trend + Top Products + Activity */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <SalesTrend  data={data.salesData}      isLoading={isLoading} />
+          <SalesTrend data={data.salesData} isLoading={isLoading} />
           <TopProducts products={data.topProducts} isLoading={isLoading} />
           <RecentActivity feed={data.activityFeed} isLoading={isLoading} />
         </div>
@@ -973,7 +1067,6 @@ function DashboardPage() {
             })}
           </div>
         </motion.div>
-
       </div>
     </div>
   );

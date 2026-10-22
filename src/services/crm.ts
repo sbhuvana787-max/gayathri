@@ -49,6 +49,7 @@ export interface CrmSettings {
   business_id: string;
   customer_number_prefix: string;
   customer_number_next_value: number;
+  customer_number_format: "cust-seq" | "plain-seq" | "yyyy-seq";
   default_credit_days: number;
   default_currency: string;
   default_country: string;

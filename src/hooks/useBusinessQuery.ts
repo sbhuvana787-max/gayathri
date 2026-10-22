@@ -8,6 +8,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { businessService, type BusinessUpsertPayload } from "../services/business";
+import type { Business } from "../contexts/BusinessContext";
 
 // ── Query keys ─────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ export function useBusinessQuery(userId: string | null) {
     queryFn: () => businessService.getByOwner(userId!),
     enabled: !!userId,
     staleTime: 1000 * 60 * 5, // 5 min — avoid refetching on every focus
-    retry: false,              // surface errors immediately; don't loop on auth errors
+    retry: false, // surface errors immediately; don't loop on auth errors
   });
 }
 
@@ -42,12 +43,24 @@ export function useUpsertBusiness(userId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: BusinessUpsertPayload) =>
-      businessService.upsert(payload),
+    mutationFn: (payload: BusinessUpsertPayload) => businessService.upsert(payload),
     onSuccess: () => {
       if (userId) {
         queryClient.invalidateQueries({ queryKey: businessKeys.byOwner(userId) });
       }
+    },
+  });
+}
+
+export function useUpdateBusiness(userId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: Partial<Business>) => {
+      if (!userId) throw new Error("You must be signed in to update business settings.");
+      return businessService.updateOwned(userId, patch);
+    },
+    onSuccess: (business) => {
+      if (userId) queryClient.setQueryData(businessKeys.byOwner(userId), business);
     },
   });
 }

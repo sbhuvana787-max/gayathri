@@ -62,7 +62,15 @@ type SubTab = "all" | "pending" | "received" | "refunded" | "timeline";
 
 // ── All payment modes ──────────────────────────────────────────────
 const ALL_MODES: PaymentMode[] = [
-  "cash", "upi", "card", "bank-transfer", "neft", "rtgs", "credit", "wallet", "cheque",
+  "cash",
+  "upi",
+  "card",
+  "bank-transfer",
+  "neft",
+  "rtgs",
+  "credit",
+  "wallet",
+  "cheque",
 ];
 
 // ── Status helpers ────────────────────────────────────────────────
@@ -98,48 +106,76 @@ function invoiceGrandTotalCalc(inv: Invoice): number {
 
 // ── Export helpers ────────────────────────────────────────────────
 function exportCSV(rows: PaymentTxn[], filename = "payments.csv") {
-  const headers = ["Payment #", "Invoice", "Customer", "Amount", "Mode", "Status", "Date", "Ref", "Notes"];
+  const headers = [
+    "Payment #",
+    "Invoice",
+    "Customer",
+    "Amount",
+    "Mode",
+    "Status",
+    "Date",
+    "Ref",
+    "Notes",
+  ];
   const lines = [
     headers.join(","),
-    ...rows.map((p) => [
-      p.paymentNumber,
-      p.invoiceNumber ?? p.invoiceId,
-      `"${p.customerName ?? p.customerId}"`,
-      p.amount,
-      paymentModeLabels[p.mode] ?? p.mode,
-      p.status,
-      p.date,
-      p.transactionRef ?? "",
-      `"${p.notes}"`,
-    ].join(",")),
+    ...rows.map((p) =>
+      [
+        p.paymentNumber,
+        p.invoiceNumber ?? p.invoiceId,
+        `"${p.customerName ?? p.customerId}"`,
+        p.amount,
+        paymentModeLabels[p.mode] ?? p.mode,
+        p.status,
+        p.date,
+        p.transactionRef ?? "",
+        `"${p.notes}"`,
+      ].join(","),
+    ),
   ];
   const blob = new Blob([lines.join("\n")], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
+  a.href = url;
+  a.download = filename;
+  a.click();
   URL.revokeObjectURL(url);
 }
 
 function exportExcel(rows: PaymentTxn[]) {
-  const headers = ["Payment #", "Invoice", "Customer", "Amount", "Mode", "Status", "Date", "Ref", "Notes"];
+  const headers = [
+    "Payment #",
+    "Invoice",
+    "Customer",
+    "Amount",
+    "Mode",
+    "Status",
+    "Date",
+    "Ref",
+    "Notes",
+  ];
   const lines = [
     headers.join("\t"),
-    ...rows.map((p) => [
-      p.paymentNumber,
-      p.invoiceNumber ?? p.invoiceId,
-      p.customerName ?? p.customerId,
-      p.amount,
-      paymentModeLabels[p.mode] ?? p.mode,
-      p.status,
-      p.date,
-      p.transactionRef ?? "",
-      p.notes,
-    ].join("\t")),
+    ...rows.map((p) =>
+      [
+        p.paymentNumber,
+        p.invoiceNumber ?? p.invoiceId,
+        p.customerName ?? p.customerId,
+        p.amount,
+        paymentModeLabels[p.mode] ?? p.mode,
+        p.status,
+        p.date,
+        p.transactionRef ?? "",
+        p.notes,
+      ].join("\t"),
+    ),
   ];
   const blob = new Blob([lines.join("\n")], { type: "application/vnd.ms-excel" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = "payments.xls"; a.click();
+  a.href = url;
+  a.download = "payments.xls";
+  a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -172,7 +208,8 @@ function PaymentTable({
   isMutating: boolean;
 }) {
   const paginated = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const btnCls = "flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-40";
+  const btnCls =
+    "flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:opacity-40";
 
   if (rows.length === 0) {
     return <EmptyState icon={CreditCard} title={emptyTitle} subtitle={emptySubtitle} />;
@@ -184,14 +221,30 @@ function PaymentTable({
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/60">
-              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground">Payment #</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Invoice</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Customer</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">Amount</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Mode</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">Date / Time</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground">
+                Payment #
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">
+                Invoice
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">
+                Customer
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">
+                Amount
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">
+                Mode
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">
+                Status
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground">
+                Date / Time
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -314,10 +367,14 @@ function TransactionTimeline({ payments }: { payments: PaymentTxn[] }) {
             className="flex items-start gap-4"
           >
             <div className="flex flex-col items-center">
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${statusBg(pay.status)}`}>
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${statusBg(pay.status)}`}
+              >
                 {statusIcon(pay.status)}
               </div>
-              {!isLast && <div className="mt-1 w-px flex-1 bg-slate-200" style={{ minHeight: 24 }} />}
+              {!isLast && (
+                <div className="mt-1 w-px flex-1 bg-slate-200" style={{ minHeight: 24 }} />
+              )}
             </div>
             <div className="flex-1 min-w-0 pb-5">
               <div className="flex items-start justify-between gap-3">
@@ -325,7 +382,9 @@ function TransactionTimeline({ payments }: { payments: PaymentTxn[] }) {
                   <p className="text-sm font-semibold text-foreground">
                     {pay.paymentNumber}
                     {pay.notes && (
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">· {pay.notes}</span>
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        · {pay.notes}
+                      </span>
                     )}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -393,30 +452,35 @@ function RecordPaymentModal({
         ? dbInvoices.filter(
             (inv) =>
               inv.customerId === customerId &&
-              (inv.paymentStatus === "pending" || inv.paymentStatus === "partial")
+              (inv.paymentStatus === "pending" || inv.paymentStatus === "partial"),
           )
         : [],
-    [customerId, dbInvoices]
+    [customerId, dbInvoices],
   );
 
-  const outstanding =
-    invoiceId ? (() => {
-      const inv = dbInvoices.find((i) => i.id === invoiceId);
-      return inv ? invoiceOutstanding(inv) : 0;
-    })() : 0;
+  const outstanding = invoiceId
+    ? (() => {
+        const inv = dbInvoices.find((i) => i.id === invoiceId);
+        return inv ? invoiceOutstanding(inv) : 0;
+      })()
+    : 0;
 
   function validate(): string | null {
     if (!customerId) return "Please select a customer.";
     if (!invoiceId) return "Please select an invoice.";
     const amt = parseFloat(amount);
     if (!amount || isNaN(amt) || amt <= 0) return "Amount must be greater than zero.";
-    if (amt > outstanding + 0.01) return `Amount cannot exceed outstanding balance of ${fmtINR(outstanding)}.`;
+    if (amt > outstanding + 0.01)
+      return `Amount cannot exceed outstanding balance of ${fmtINR(outstanding)}.`;
     return null;
   }
 
   function handleSubmit() {
     const err = validate();
-    if (err) { toast.error(err); return; }
+    if (err) {
+      toast.error(err);
+      return;
+    }
     onRecord({
       invoiceId,
       customerId,
@@ -430,12 +494,20 @@ function RecordPaymentModal({
   }
 
   function reset() {
-    setCustomerId(""); setInvoiceId(""); setAmount("");
-    setMode("cash"); setDate(today); setRef(""); setNotes(""); setCurrency("INR");
+    setCustomerId("");
+    setInvoiceId("");
+    setAmount("");
+    setMode("cash");
+    setDate(today);
+    setRef("");
+    setNotes("");
+    setCurrency("INR");
   }
 
   // Reset when modal opens
-  useMemo(() => { if (open) reset(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useMemo(() => {
+    if (open) reset();
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const labelCls = "block text-xs font-semibold text-slate-600 mb-1";
   const inputCls =
@@ -450,11 +522,17 @@ function RecordPaymentModal({
           <select
             className={inputCls}
             value={customerId}
-            onChange={(e) => { setCustomerId(e.target.value); setInvoiceId(""); setAmount(""); }}
+            onChange={(e) => {
+              setCustomerId(e.target.value);
+              setInvoiceId("");
+              setAmount("");
+            }}
           >
             <option value="">Select customer…</option>
             {dbCustomers.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
           </select>
         </div>
@@ -481,7 +559,10 @@ function RecordPaymentModal({
           </select>
           {invoiceId && outstanding > 0 && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Outstanding balance: <span className="font-semibold text-foreground">{fmtINR(Math.round(outstanding))}</span>
+              Outstanding balance:{" "}
+              <span className="font-semibold text-foreground">
+                {fmtINR(Math.round(outstanding))}
+              </span>
             </p>
           )}
           {invoiceId && outstanding === 0 && (
@@ -505,9 +586,15 @@ function RecordPaymentModal({
           </div>
           <div>
             <label className={labelCls}>Payment Mode *</label>
-            <select className={inputCls} value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)}>
+            <select
+              className={inputCls}
+              value={mode}
+              onChange={(e) => setMode(e.target.value as PaymentMode)}
+            >
               {ALL_MODES.map((m) => (
-                <option key={m} value={m}>{paymentModeLabels[m]}</option>
+                <option key={m} value={m}>
+                  {paymentModeLabels[m]}
+                </option>
               ))}
             </select>
           </div>
@@ -517,7 +604,12 @@ function RecordPaymentModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Payment Date *</label>
-            <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              className={inputCls}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
           <div>
             <label className={labelCls}>Transaction Reference</label>
@@ -535,7 +627,11 @@ function RecordPaymentModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Currency</label>
-            <select className={inputCls} value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            <select
+              className={inputCls}
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+            >
               <option value="INR">INR — ₹</option>
               <option value="USD">USD — $</option>
               <option value="EUR">EUR — €</option>
@@ -568,7 +664,14 @@ function RecordPaymentModal({
             disabled={isSaving}
             className="inline-flex items-center gap-2 rounded-xl bg-[image:var(--gradient-brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Record Payment"}
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Record Payment"
+            )}
           </button>
         </div>
       </div>
@@ -587,7 +690,12 @@ function EditPaymentModal({
   open: boolean;
   onClose: () => void;
   payment: PaymentTxn;
-  onSave: (input: { mode: PaymentMode; date: string; transactionRef?: string; notes?: string }) => void;
+  onSave: (input: {
+    mode: PaymentMode;
+    date: string;
+    transactionRef?: string;
+    notes?: string;
+  }) => void;
   isSaving: boolean;
 }) {
   const [mode, setMode] = useState<PaymentMode>(payment.mode);
@@ -605,43 +713,81 @@ function EditPaymentModal({
         <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm">
           <p className="font-semibold text-foreground">{payment.paymentNumber}</p>
           <p className="text-xs text-muted-foreground">
-            {payment.invoiceNumber ?? payment.invoiceId} · {payment.customerName ?? payment.customerId} · {fmtINR(payment.amount)}
+            {payment.invoiceNumber ?? payment.invoiceId} ·{" "}
+            {payment.customerName ?? payment.customerId} · {fmtINR(payment.amount)}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Payment Mode</label>
-            <select className={inputCls} value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)}>
-              {ALL_MODES.map((m) => <option key={m} value={m}>{paymentModeLabels[m]}</option>)}
+            <select
+              className={inputCls}
+              value={mode}
+              onChange={(e) => setMode(e.target.value as PaymentMode)}
+            >
+              {ALL_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {paymentModeLabels[m]}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <label className={labelCls}>Payment Date</label>
-            <input type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              type="date"
+              className={inputCls}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
         </div>
 
         <div>
           <label className={labelCls}>Transaction Reference</label>
-          <input type="text" className={inputCls} value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Optional" />
+          <input
+            type="text"
+            className={inputCls}
+            value={ref}
+            onChange={(e) => setRef(e.target.value)}
+            placeholder="Optional"
+          />
         </div>
 
         <div>
           <label className={labelCls}>Notes</label>
-          <textarea className={`${inputCls} resize-none`} rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes…" />
+          <textarea
+            className={`${inputCls} resize-none`}
+            rows={3}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Optional notes…"
+          />
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-1">
-          <button onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
             Cancel
           </button>
           <button
-            onClick={() => onSave({ mode, date, transactionRef: ref || undefined, notes: notes || undefined })}
+            onClick={() =>
+              onSave({ mode, date, transactionRef: ref || undefined, notes: notes || undefined })
+            }
             disabled={isSaving}
             className="inline-flex items-center gap-2 rounded-xl bg-[image:var(--gradient-brand)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:shadow-md disabled:opacity-50"
           >
-            {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Save Changes"}
+            {isSaving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Save Changes"
+            )}
           </button>
         </div>
       </div>
@@ -650,7 +796,15 @@ function EditPaymentModal({
 }
 
 // ── Preview Modal ──────────────────────────────────────────────────
-function PreviewModal({ open, onClose, payment }: { open: boolean; onClose: () => void; payment: PaymentTxn }) {
+function PreviewModal({
+  open,
+  onClose,
+  payment,
+}: {
+  open: boolean;
+  onClose: () => void;
+  payment: PaymentTxn;
+}) {
   const labelCls = "text-xs text-muted-foreground";
   const valueCls = "text-sm font-semibold text-foreground";
   const row = (label: string, value: string | undefined) =>
@@ -681,7 +835,10 @@ function PreviewModal({ open, onClose, payment }: { open: boolean; onClose: () =
           {row("Notes", payment.notes || undefined)}
         </div>
         <div className="flex justify-end pt-2">
-          <button onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
             Close
           </button>
         </div>
@@ -712,17 +869,23 @@ function PaymentMethodBreakdown({ payments }: { payments: PaymentTxn[] }) {
       <div className="mb-4 flex items-center gap-2">
         <BarChart2 className="h-4 w-4 text-violet-500" />
         <h3 className="text-sm font-semibold text-foreground">Payment Method Breakdown</h3>
-        <span className="ml-auto text-xs text-muted-foreground">{payments.length} transactions</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {payments.length} transactions
+        </span>
       </div>
       <div className="space-y-3">
         {breakdown.map((b) => {
           const pct = maxTotal > 0 ? (b.total / maxTotal) * 100 : 0;
           return (
             <div key={b.mode} className="flex items-center gap-3">
-              <div className="w-28 shrink-0"><PaymentModeBadge mode={b.mode} /></div>
+              <div className="w-28 shrink-0">
+                <PaymentModeBadge mode={b.mode} />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-muted-foreground">{b.count} txn{b.count !== 1 ? "s" : ""}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {b.count} txn{b.count !== 1 ? "s" : ""}
+                  </span>
                   <span className="text-xs font-semibold text-foreground">{fmtINR(b.total)}</span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
@@ -769,7 +932,7 @@ export function PaymentsTab() {
   const refundMutation = useRefundPayment(businessId);
   const voidMutation = useVoidPayment(businessId);
 
-  const payments = paymentsQuery.data ?? [];
+  const payments = useMemo(() => paymentsQuery.data ?? [], [paymentsQuery.data]);
 
   // ── UI state ──────────────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -788,17 +951,22 @@ export function PaymentsTab() {
     voidMutation.isPending;
 
   // ── Stats ─────────────────────────────────────────────────────
-  const receivedPayments = payments.filter((p) => p.status === "received" || p.status === "completed");
+  const receivedPayments = payments.filter(
+    (p) => p.status === "received" || p.status === "completed",
+  );
   const totalReceived = receivedPayments.reduce((s, p) => s + p.amount, 0);
   const receivedCount = receivedPayments.length;
-  const totalPending = payments.filter((p) => p.status === "pending").reduce((s, p) => s + p.amount, 0);
-  const totalRefunded = payments.filter((p) => p.status === "refunded").reduce((s, p) => s + p.amount, 0);
+  const totalPending = payments
+    .filter((p) => p.status === "pending")
+    .reduce((s, p) => s + p.amount, 0);
+  const totalRefunded = payments
+    .filter((p) => p.status === "refunded")
+    .reduce((s, p) => s + p.amount, 0);
   const totalCount = payments.length;
   const avgPayment = receivedCount > 0 ? totalReceived / receivedCount : 0;
   const collectionDenominator = totalReceived + totalPending;
-  const collectionPct = collectionDenominator > 0
-    ? ((totalReceived / collectionDenominator) * 100).toFixed(0)
-    : "0";
+  const collectionPct =
+    collectionDenominator > 0 ? ((totalReceived / collectionDenominator) * 100).toFixed(0) : "0";
 
   // ── Filter ────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -834,10 +1002,13 @@ export function PaymentsTab() {
   ];
 
   const exportRows =
-    activeSubTab === "pending" ? pendingRows
-      : activeSubTab === "received" ? receivedRows
-      : activeSubTab === "refunded" ? refundedRows
-      : filtered;
+    activeSubTab === "pending"
+      ? pendingRows
+      : activeSubTab === "received"
+        ? receivedRows
+        : activeSubTab === "refunded"
+          ? refundedRows
+          : filtered;
 
   // ── Handlers ──────────────────────────────────────────────────
   const handleRecord = (input: Parameters<typeof createMutation.mutate>[0]) => {
@@ -851,47 +1022,66 @@ export function PaymentsTab() {
     });
   };
 
-  const handleEdit = (input: { mode: PaymentMode; date: string; transactionRef?: string; notes?: string }) => {
+  const handleEdit = (input: {
+    mode: PaymentMode;
+    date: string;
+    transactionRef?: string;
+    notes?: string;
+  }) => {
     if (!editTarget) return;
     updateMutation.mutate(
       { id: editTarget.id, input },
       {
-        onSuccess: () => { toast.success("Payment updated."); setEditTarget(null); },
+        onSuccess: () => {
+          toast.success("Payment updated.");
+          setEditTarget(null);
+        },
         onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to update."),
-      }
+      },
     );
   };
 
   const handleDelete = (pay: PaymentTxn) => {
-    if (!window.confirm(`Delete payment ${pay.paymentNumber}? This will reverse the invoice balance.`)) return;
+    if (
+      !window.confirm(`Delete payment ${pay.paymentNumber}? This will reverse the invoice balance.`)
+    )
+      return;
     deleteMutation.mutate(
-      { id: pay.id, invoiceId: pay.invoiceId, amount: pay.amount },
+      { id: pay.id },
       {
         onSuccess: () => toast.success("Payment deleted."),
         onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to delete."),
-      }
+      },
     );
   };
 
   const handleRefund = (pay: PaymentTxn) => {
-    if (!window.confirm(`Refund payment ${pay.paymentNumber} of ${fmtINR(pay.amount)}? This will reduce the invoice's paid amount.`)) return;
+    if (
+      !window.confirm(
+        `Refund payment ${pay.paymentNumber} of ${fmtINR(pay.amount)}? This will reduce the invoice's paid amount.`,
+      )
+    )
+      return;
     refundMutation.mutate(
-      { id: pay.id, invoiceId: pay.invoiceId, amount: pay.amount },
+      { id: pay.id },
       {
         onSuccess: () => toast.success("Payment refunded."),
         onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to refund."),
-      }
+      },
     );
   };
 
   const handleVoid = (pay: PaymentTxn) => {
-    if (!window.confirm(`Void payment ${pay.paymentNumber}? This will reverse the invoice balance.`)) return;
+    if (
+      !window.confirm(`Void payment ${pay.paymentNumber}? This will reverse the invoice balance.`)
+    )
+      return;
     voidMutation.mutate(
-      { id: pay.id, invoiceId: pay.invoiceId, amount: pay.amount },
+      { id: pay.id },
       {
         onSuccess: () => toast.success("Payment voided."),
         onError: (e: unknown) => toast.error((e as Error).message ?? "Failed to void."),
-      }
+      },
     );
   };
 
@@ -908,12 +1098,54 @@ export function PaymentsTab() {
     <div className="space-y-6">
       {/* Stat Strip */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <StatTile label="Total Received" value={fmtINR(totalReceived)} icon={CheckCircle2} bg="bg-emerald-50" iconColor="text-emerald-600" index={0} />
-        <StatTile label="Pending" value={fmtINR(totalPending)} icon={Clock} bg="bg-amber-50" iconColor="text-amber-600" index={1} />
-        <StatTile label="Refunded" value={fmtINR(totalRefunded)} icon={RefreshCcw} bg="bg-cyan-50" iconColor="text-cyan-600" index={2} />
-        <StatTile label="Transactions" value={String(totalCount)} icon={IndianRupee} bg="bg-blue-50" iconColor="text-blue-600" index={3} />
-        <StatTile label="Avg Payment" value={fmtINR(Math.round(avgPayment))} icon={BarChart2} bg="bg-purple-50" iconColor="text-purple-600" index={4} />
-        <StatTile label="Collection %" value={`${collectionPct}%`} icon={Percent} bg="bg-sky-50" iconColor="text-sky-600" index={5} />
+        <StatTile
+          label="Total Received"
+          value={fmtINR(totalReceived)}
+          icon={CheckCircle2}
+          bg="bg-emerald-50"
+          iconColor="text-emerald-600"
+          index={0}
+        />
+        <StatTile
+          label="Pending"
+          value={fmtINR(totalPending)}
+          icon={Clock}
+          bg="bg-amber-50"
+          iconColor="text-amber-600"
+          index={1}
+        />
+        <StatTile
+          label="Refunded"
+          value={fmtINR(totalRefunded)}
+          icon={RefreshCcw}
+          bg="bg-cyan-50"
+          iconColor="text-cyan-600"
+          index={2}
+        />
+        <StatTile
+          label="Transactions"
+          value={String(totalCount)}
+          icon={IndianRupee}
+          bg="bg-blue-50"
+          iconColor="text-blue-600"
+          index={3}
+        />
+        <StatTile
+          label="Avg Payment"
+          value={fmtINR(Math.round(avgPayment))}
+          icon={BarChart2}
+          bg="bg-purple-50"
+          iconColor="text-purple-600"
+          index={4}
+        />
+        <StatTile
+          label="Collection %"
+          value={`${collectionPct}%`}
+          icon={Percent}
+          bg="bg-sky-50"
+          iconColor="text-sky-600"
+          index={5}
+        />
       </div>
 
       {/* Main Card */}
@@ -923,7 +1155,10 @@ export function PaymentsTab() {
           {subTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => { setActiveSubTab(tab.id); setPage(1); }}
+              onClick={() => {
+                setActiveSubTab(tab.id);
+                setPage(1);
+              }}
               className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
                 activeSubTab === tab.id
                   ? "bg-[image:var(--gradient-brand)] text-white shadow-sm"
@@ -932,7 +1167,9 @@ export function PaymentsTab() {
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeSubTab === tab.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${activeSubTab === tab.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}
+                >
                   {tab.count}
                 </span>
               )}
@@ -950,13 +1187,19 @@ export function PaymentsTab() {
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3">
             <SearchInput
               value={search}
-              onChange={(v) => { setSearch(v); setPage(1); }}
+              onChange={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
               placeholder="Search payments…"
               className="w-48"
             />
             <Select
               value={modeFilter}
-              onChange={(v) => { setModeFilter(v); setPage(1); }}
+              onChange={(v) => {
+                setModeFilter(v);
+                setPage(1);
+              }}
               options={[
                 { value: "all", label: "All Modes" },
                 { value: "cash", label: "Cash" },
@@ -995,16 +1238,47 @@ export function PaymentsTab() {
         ) : (
           <>
             {activeSubTab === "all" && (
-              <PaymentTable rows={filtered} page={page} totalPages={allTotalPages} onPageChange={setPage} emptyTitle="No payments found" emptySubtitle="Try adjusting your search or mode filter." {...tableProps} />
+              <PaymentTable
+                rows={filtered}
+                page={page}
+                totalPages={allTotalPages}
+                onPageChange={setPage}
+                emptyTitle="No payments found"
+                emptySubtitle="Try adjusting your search or mode filter."
+                {...tableProps}
+              />
             )}
             {activeSubTab === "pending" && (
-              <PaymentTable rows={pendingRows} page={page} totalPages={pendingTotalPages} onPageChange={setPage} emptyTitle="No pending payments" emptySubtitle="All payments have been settled." {...tableProps} />
+              <PaymentTable
+                rows={pendingRows}
+                page={page}
+                totalPages={pendingTotalPages}
+                onPageChange={setPage}
+                emptyTitle="No pending payments"
+                emptySubtitle="All payments have been settled."
+                {...tableProps}
+              />
             )}
             {activeSubTab === "received" && (
-              <PaymentTable rows={receivedRows} page={page} totalPages={receivedTotalPages} onPageChange={setPage} emptyTitle="No received payments" {...tableProps} />
+              <PaymentTable
+                rows={receivedRows}
+                page={page}
+                totalPages={receivedTotalPages}
+                onPageChange={setPage}
+                emptyTitle="No received payments"
+                {...tableProps}
+              />
             )}
             {activeSubTab === "refunded" && (
-              <PaymentTable rows={refundedRows} page={page} totalPages={refundedTotalPages} onPageChange={setPage} emptyTitle="No refunds found" emptySubtitle="No refunded transactions recorded yet." {...tableProps} />
+              <PaymentTable
+                rows={refundedRows}
+                page={page}
+                totalPages={refundedTotalPages}
+                onPageChange={setPage}
+                emptyTitle="No refunds found"
+                emptySubtitle="No refunded transactions recorded yet."
+                {...tableProps}
+              />
             )}
             {activeSubTab === "timeline" && (
               <div className="p-6">

@@ -64,6 +64,25 @@ export interface DbPurchaseBill {
   updated_at: string;
 }
 
+interface DbGoodsReceivedNoteItemRow {
+  product_id: string;
+  ordered_qty: number;
+  received_qty: number;
+  quality_status: "ok" | "partial" | "rejected";
+}
+
+interface DbGoodsReceivedNoteRow {
+  id: string;
+  grn_number: string;
+  purchase_order_id: string;
+  supplier_id: string;
+  received_date: string;
+  received_by: string;
+  notes: string;
+  reference_number: string | null;
+  goods_received_note_items: DbGoodsReceivedNoteItemRow[] | null;
+}
+
 export interface PurchaseOrderInput {
   supplierId: string;
   status: POStatus;
@@ -140,7 +159,7 @@ function dbOrderToUi(order: DbPurchaseOrder, items: DbPurchaseOrderItem[]): Purc
   };
 }
 
-function dbGrnToUi(row: any): GoodsReceivedNote {
+function dbGrnToUi(row: DbGoodsReceivedNoteRow): GoodsReceivedNote {
   return {
     id: row.id,
     grnNumber: row.grn_number,
@@ -150,7 +169,7 @@ function dbGrnToUi(row: any): GoodsReceivedNote {
     receivedBy: row.received_by,
     notes: row.notes,
     referenceNumber: row.reference_number ?? undefined,
-    items: (row.goods_received_note_items ?? []).map((item: any) => ({
+    items: (row.goods_received_note_items ?? []).map((item) => ({
       productId: item.product_id,
       orderedQty: item.ordered_qty,
       receivedQty: item.received_qty,
@@ -178,7 +197,7 @@ export const purchaseFlowService = {
       orders: ((orders ?? []) as DbPurchaseOrder[]).map((order) =>
         dbOrderToUi(order, (items ?? []) as DbPurchaseOrderItem[])
       ),
-      grns: (grns ?? []).map(dbGrnToUi),
+      grns: (grns ?? []).map((row) => dbGrnToUi(row as DbGoodsReceivedNoteRow)),
     };
   },
 
